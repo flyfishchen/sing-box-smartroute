@@ -177,25 +177,25 @@ go build -tags "with_gvisor,with_quic,with_dhcp,with_wireguard,with_utls,with_ac
 $$\text{Cost} = \underbrace{\text{RTT}_{\text{smooth}}}_{\text{基础平滑延迟}} + \underbrace{\text{Jitter} \times W_{\text{jitter}} + \text{LossRate} \times W_{\text{loss}} + \text{Penalty}(t)}_{\text{SLA 抖动/丢包/历史震荡惩罚代价}} + \underbrace{\text{BWPenalty}}_{\text{带宽拥塞代价}} + \underbrace{(\text{CostRatio} - 1.0) \times W_{\text{cost}}}_{\text{流量成本代价}} + \underbrace{\text{Preference}}_{\text{线路偏好补贴}}$$
 
 * **带宽拥塞代价 (`BWPenalty`)**：
-  当节点配置了 `max_bandwidth_mbps > 0` 且实时带宽水位 $U = \frac{\text{Throughput}}{\text{MaxBandwidth}} > 60\%$ 时，按非线性曲线累加拥塞代价：
+  当节点配置了 `max_bandwidth_mbps > 0` 且实时带宽水位 $U = \frac{\text{Throughput}}{\text{MaxBandwidth}} > 0.60$（即超过 `60%`）时，按非线性曲线累加拥塞代价：
   $$\text{BWPenalty} = W_{\text{bw}} \times \frac{U - 0.60}{1.0 - U} \quad (0.60 < U < 0.95)$$
-  当 $U \ge 95\%$ 时标记为满载，**新发起的连接将自动无损溢出（Spillover）至次优空闲线路，且绝不中断当前主路已建立的存量连接**。
+  当带宽水位达到 $U \ge 0.95$（即 `95%`）时标记为满载，**新发起的连接将自动无损溢出（Spillover）至次优空闲线路，且绝不中断当前主路已建立的存量连接**。
 
 ### 2. 两阶段选路决策流程与被动熔断主动核验
 1. **第一阶段（Tier 分层 SLA 过滤与跨层溢出）**：
-   * 节点满足 SLA 的条件：$\text{RTT}_{\text{smooth}} \le \text{max\_latency}$ 且 $\text{LossRate} \le \text{max\_loss}$ 且带宽水位 $< 95\%$。
-   * 系统优先在**最高优先级层级（最小 `tier` 数字，如 `Tier 1`）**中筛选满足 SLA 的节点；只要 `Tier 1` 存在至少 1 个达标节点，`Tier 2/3` 即使物理延迟更低也绝不抢占。
+   * 节点满足 SLA 的条件：平滑延迟 $\text{RTT}_{\text{smooth}} \le \text{RTT}_{\max}$（`max_latency`）、丢包率 $\text{LossRate} \le \text{Loss}_{\max}$（`max_loss`），且实时带宽水位 $< 95\%$。
+   * 系统优先在 **最高优先级层级**（最小 `tier` 数字，如 `Tier 1`）中筛选满足 SLA 的节点；只要 `Tier 1` 存在至少 1 个达标节点，`Tier 2/3` 即使物理延迟更低也绝不抢占。
    * 仅当 `Tier 1` 所有节点均超出 SLA 门限或满载时，流量才自动溢出至 `Tier 2`。
 2. **第二阶段（同层综合代价择优 + 防震荡滞回与驻留保护）**：
    * 在同一层级内，对比候选节点与当前主路的综合代价差 $\Delta = \text{Cost}_{\text{current}} - \text{Cost}_{\text{candidate}}$。
    * 必须同时满足以下两个条件才执行切换：
-     1. **滞回容差门限**：$\Delta > \max(\text{tolerance},\ 10\% \times \text{Cost}_{\text{current}})$
-     2. **最短驻留保护期**：$\text{距上次切换时间} \ge \text{hold\_time}$
+     1. **滞回容差门限**：$\Delta > \max(\text{Tolerance},\ 0.10 \times \text{Cost}_{\text{current}})$（即大于 `tolerance` 与当前主路总代价的 `10%`）
+     2. **最短驻留保护期**：距上次切换时间 $\Delta t_{\text{hold}} \ge T_{\text{hold}}$（`hold_time`）
 3. **被动熔断与主动探测防误杀机制（`failure_threshold`）**：
    * 当实际业务流量通过当前主路连续建连失败达到 `failure_threshold` 次时，系统采取 **「当前请求零等待借道备路 + 单飞主动探测裁决」** 双轨策略：
      1. **业务请求零等待重试**：当前触发阈值的这笔连接请求立即通过 `selectAlternateOutbound` 借道次优健康备路重拨，不阻塞用户当前连接。
      2. **主动探测区分“节点故障”与“目标站点故障”**：后台立即对该节点发起 1 次针对测速 `url`（默认 `http://1.1.1.1/cdn-cgi/trace`，3s 超时，单飞去重）的主动探测：
-        * **若主动探测成功**：证明「本地 $\leftrightarrow$ 代理节点 $\leftrightarrow$ 外部网络」完全正常，此前连续失败是由**目标站点自身不可达**引起。系统立即清零该节点的连续被动失败计数、退还累积被动惩罚、刷新平滑 RTT，并保持原主路不变（记录 `probe_verified_healthy` 事件，拒绝误熔断）。
+        * **若主动探测成功**：证明「本地 $\leftrightarrow$ 代理节点 $\leftrightarrow$ 外部网络」完全正常，此前连续失败是由 **目标站点自身不可达** 引起。系统立即清零该节点的连续被动失败计数、退还累积被动惩罚、刷新平滑 RTT，并保持原主路不变（记录 `probe_verified_healthy` 事件，拒绝误熔断）。
         * **若主动探测失败**：实锤代理节点自身故障，立即正式打开熔断开关（`CircuitOpen = true`）、记入 `+100` 熔断惩罚分并触发主路切换（记录 `passive_circuit_trip` 事件）。
 
 ### 3. 五大内置选路算法与参数支持矩阵
@@ -205,8 +205,8 @@ $$\text{Cost} = \underbrace{\text{RTT}_{\text{smooth}}}_{\text{基础平滑延�
 | 算法标识 (`algorithm`) | 算法名称 | 数学模型与核心机制 | 最适用场景 |
 | :--- | :--- | :--- | :--- |
 | **`composite`**<br>*(默认)* | **多维加权综合代价法**<br>*(Weighted Composite Cost)* | **线性五维叠加 + 固定/相对容差滞回**：<br>$\text{Cost} = \text{RTT} + \text{Jitter}\cdot W_{\text{jit}} + \text{Loss}\cdot W_{\text{loss}} + \text{Penalty} + \text{BW} + \text{Cost} + \text{Pref}$ | **通用均衡场景**：适合专线/精品网/直连混合调度。 |
-| **`lcb_robust`** | **置信上界抗波动法**<br>*(UCB Tail + Bilateral Jitter Envelope)* | **1. P95 悲观置信上界 + 样本不确定性 + 丢包非线性阻尼**：<br>$\text{RTT}_{\text{eff}} = \frac{\text{RTT} + 1.65 \cdot W_{\text{jit}} \cdot \text{Jitter} \cdot (1 + 1/\sqrt{N})}{(1 - \text{LossRate})^2}$<br>**2. 双边抖动包络自适应滞回（Welch's t-test 思想）**：<br>$\text{Hysteresis} = \max\Big(\text{tolerance},\ 10\%\cdot\text{Cost},\ \mathbf{1.25 \times (\text{Jitter}_{\text{主路}} + \text{Jitter}_{\text{候选}})}\Big)$ | **各线路均不稳定（如全员 100~1000ms 剧烈波动）**：<br>自动利用主备双边抖动之和抬升切换门槛，无需手调超大容差即可过滤随机波峰波谷相位差。 |
-| **`sticky_sla`** | **SLA 粘滞死锁法**<br>*(Strict SLA Sticky Lock)* | **“不破红线绝不切换”**：<br>只要当前承载主路健康、未满载且满足 SLA 门限（$\text{RTT} \le \text{max\_latency}$ 且 $\text{Loss} \le \text{max\_loss}$），同层级内完全忽略其他节点的低延迟诱惑，死锁当前主路；仅在违约、熔断或满载时重选最优备路。 | **极端防抖 / 防出口 IP 变动场景**：<br>如 SSH 终端、远程桌面、金融/开发长连接，或“只要当前线路能用就绝不折腾”。 |
+| **`lcb_robust`** | **置信上界抗波动法**<br>*(UCB Tail + Bilateral Jitter Envelope)* | **1. P95 悲观置信上界 + 样本不确定性 + 丢包非线性阻尼**：<br>$\text{RTT}_{\text{eff}} = \frac{\text{RTT} + 1.65 \cdot W_{\text{jit}} \cdot \text{Jitter} \cdot (1 + 1/\sqrt{N})}{(1 - \text{LossRate})^2}$<br>**2. 双边抖动包络自适应滞回（Welch's t-test 思想）**：<br>$\text{Hysteresis} = \max\big(\text{Tolerance},\ 0.10\cdot\text{Cost},\ 1.25 \times (\text{Jitter}_{\text{cur}} + \text{Jitter}_{\text{cand}})\big)$ | **各线路均不稳定（如全员 100~1000ms 剧烈波动）**：<br>自动利用主备双边抖动之和抬升切换门槛，无需手调超大容差即可过滤随机波峰波谷相位差。 |
+| **`sticky_sla`** | **SLA 粘滞死锁法**<br>*(Strict SLA Sticky Lock)* | **“不破红线绝不切换”**：<br>只要当前承载主路健康、未满载且满足 SLA 门限（$\text{RTT} \le \text{RTT}_{\max}$ 且 $\text{Loss} \le \text{Loss}_{\max}$），同层级内完全忽略其他节点的低延迟诱惑，死锁当前主路；仅在违约、熔断或满载时重选最优备路。 | **极端防抖 / 防出口 IP 变动场景**：<br>如 SSH 终端、远程桌面、金融/开发长连接，或“只要当前线路能用就绝不折腾”。 |
 | **`mos_itu`** | **ITU-T G.107 实时交互法**<br>*(E-Model MOS Quality)* | **177.3ms 语音延迟拐点非线性模型**：<br>• 有效缓冲延迟 $d_{\text{eff}} = \text{RTT} + 2 \cdot W_{\text{jit}} \cdot \text{Jitter}$；<br>• 当 $d_{\text{eff}} > 177.3\text{ms}$ 时触发非线性陡增惩罚 $(d_{\text{eff}} - 177.3)\times 1.8$；<br>• 丢包采用突发非线性损耗函数 $\frac{\text{Loss}}{\text{Loss} + 0.08}$。 | **实时语音 (VoIP) / 视频会议 / 竞技游戏**：<br>严守 `177ms` 交互体验红线与零丢包要求。 |
 | **`lowest_rtt`** | **经典极简延迟优先法**<br>*(Pure Smoothed RTT)* | 仅比较层级 (`Tier`)、平滑延迟 (`SmoothedRTT`)、线路偏好补贴 (`Preference`) 与断连惩罚，忽略抖动与资费成本倍率。 | **传统极简测速场景**：保持纯延迟选路习惯，同时具备 EWMA 平滑与被动熔断能力。 |
 
@@ -215,7 +215,7 @@ $$\text{Cost} = \underbrace{\text{RTT}_{\text{smooth}}}_{\text{基础平滑延�
 
 | 参数项 | `composite`<br>多维加权综合代价 | `lcb_robust`<br>置信上界抗波动 | `sticky_sla`<br>SLA 粘滞死锁 | `mos_itu`<br>ITU-T 实时交互 | `lowest_rtt`<br>极简延迟优先 |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **`tolerance`<br>容差 (代价)** | ✅ **线性滞回生效**<br>$\max(\text{容差}, 10\%\cdot\text{Cost})$ | ⚡ **作为保底容差**<br>自动取 $\max(\text{容差}, 10\%\cdot\text{Cost}, 1.25\times(\text{Jit}_{\text{主}}+\text{Jit}_{\text{备}}))$ | ❌ **不生效 (自动置灰)**<br>主路满足 SLA 期间死锁不切 | ✅ **生效** | ✅ **生效** |
+| **`tolerance`<br>容差 (代价)** | ✅ **线性滞回生效**<br>$\max(\text{Tolerance}, 0.10\cdot\text{Cost})$ | ⚡ **作为保底容差**<br>自动取 $\max(\text{Tolerance}, 0.10\cdot\text{Cost}, 1.25\times(\text{Jit}_{\text{cur}}+\text{Jit}_{\text{cand}}))$ | ❌ **不生效 (自动置灰)**<br>主路满足 SLA 期间死锁不切 | ✅ **生效** | ✅ **生效** |
 | **`jitter_weight`<br>抖动权重** | ✅ **线性加权**<br>$\text{Jitter} \times W_{\text{jit}}$ | ⚡ **P95 置信上界调节**<br>$1.65 \cdot W_{\text{jit}} \cdot \text{Jitter} \cdot (1+\frac{1}{\sqrt{N}})$ | ✅ **仅重选备路时生效** | ⚡ **缓冲延迟加权**<br>超 `177.3ms` 陡增惩罚 | ❌ **不生效 (自动置灰)**<br>完全忽略抖动 |
 | **`loss_weight`<br>丢包权重** | ✅ **线性加权**<br>$\text{Loss} \times W_{\text{loss}}$ | ⚡ **双重惩罚**<br>线性项 + $\frac{1}{(1-\text{Loss})^2}$ 分母放大 | ✅ **仅重选备路时生效** | ⚡ **突发丢包非线性曲线**<br>$W_{\text{loss}} \cdot \frac{\text{Loss}}{\text{Loss}+0.08}\cdot 1.5$ | ⚡ **半权轻量惩罚**<br>$0.5 \times \text{Loss} \times W_{\text{loss}}$ |
 | **`bandwidth_weight`<br>带宽权重** | ✅ **生效** | ✅ **生效** | ✅ **生效**（满载 95% 仍触发溢出） | ✅ **生效** | ✅ **生效** |
@@ -241,7 +241,7 @@ $$\text{Cost} = \underbrace{\text{RTT}_{\text{smooth}}}_{\text{基础平滑延�
 
 | 字段名 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :---: | :--- |
-| `tolerance` | `uint16` | `50` | **同级切换容差（单位：代价）**。同层级内非故障切换所需的最小综合代价优势，实际生效门限为 $\max(\text{tolerance}, 10\% \times \text{当前节点总代价})$。 |
+| `tolerance` | `uint16` | `50` | **同级切换容差（单位：代价）**。同层级内非故障切换所需的最小综合代价优势，实际生效门限为 $\max(\text{Tolerance},\ 0.10 \times \text{Cost}_{\text{current}})$。 |
 | `hold_time` | `Duration` | `"30s"` | **最短驻留保护期**。主路切换后必须稳定驻留满该时长才允许再次发生非故障择优切换，防止延迟毛刺引发乒乓回切。 |
 | `failure_threshold` | `uint8` | `5` | **被动熔断连续失败阈值**。当实际业务流量连续建连失败达到该次数时，当前请求立即零等待借道备路重拨，同时对该节点发起单飞主动探测：探测失败则正式触发节点熔断并切主；探测成功则判定为目标站点问题，自动清零计数并保持原主路不变。 |
 
@@ -261,12 +261,12 @@ $$\text{Cost} = \underbrace{\text{RTT}_{\text{smooth}}}_{\text{基础平滑延�
 | `max_loss` | `float64` | `0.20` | **SLA 最大探测丢包率门限（范围 `0 ~ 1.0`，`0.20` 即 `20%`）**。在默认 $N=6$ 窗口下，单次偶发超时恢复后的残留丢包率为 `16% <= 20%`（立即恢复达标），连续 2 次超时（`36% > 20%`）才判定为 SLA 违约。 |
 | `jitter_weight` | `float64` | `1.0` | **抖动权重（代价 / 1ms 抖动）**。默认 `1.0` 表示每 `1ms` 抖动增加 `1.0` 点综合代价。 |
 | `loss_weight` | `float64` | `300.0` | **丢包权重（代价 / 100% 丢包）**。JSON 中 `300.0` 对应每 **1% 丢包增加 `3.0` 点代价**（Web UI 面板中直接以“每 1% 丢包代价 `3.0`”展示）。 |
-| `bandwidth_weight` | `float64` | `40.0` | **带宽拥塞权重**。当节点实时吞吐超过额定带宽 `60%` 时，按 $\text{BWWeight} \times \frac{U-0.6}{1-U}$ 累加代价。 |
-| `cost_weight` | `float64` | `25.0` | **流量成本权重**。将策略表中的成本倍率折算为选路代价：$(\text{cost} - 1.0) \times \text{cost\_weight}$。 |
+| `bandwidth_weight` | `float64` | `40.0` | **带宽拥塞权重**。当节点实时吞吐超过额定带宽 `60%` 时，按 $W_{\text{bw}} \times \frac{U-0.6}{1-U}$ 累加代价。 |
+| `cost_weight` | `float64` | `25.0` | **流量成本权重**。将策略表中的成本倍率折算为选路代价：$(\text{CostRatio} - 1.0) \times W_{\text{cost}}$。 |
 
 ### 5. 线路策略表 (`policies`) 子字段
 
-`policies` 数组按**从上到下顺序匹配**节点标签 `tag`（命中第一条即生效，未命中的节点默认使用 `tier=1, preference=0, max_bandwidth_mbps=0, cost=1.0`）：
+`policies` 数组按 **从上到下顺序匹配** 节点标签 `tag`（命中第一条即生效，未命中的节点默认使用 `tier=1, preference=0, max_bandwidth_mbps=0, cost=1.0`）：
 
 | 字段名 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :---: | :--- |
