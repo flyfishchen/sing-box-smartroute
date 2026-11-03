@@ -180,9 +180,9 @@ $$
 
 * **带宽拥塞代价 (`BWPenalty`)**：
   当节点配置了 `max_bandwidth_mbps > 0` 且实时带宽水位 $U = \frac{\text{Throughput}}{\text{MaxBandwidth}} > 0.60$ （即超过 `60%`）时，按非线性曲线累加拥塞代价：
-  $$
-  \text{BWPenalty} = W_ {\text{bw}} \times \frac{U - 0.60}{1.0 - U} \quad (0.60 < U < 0.95)
-  $$
+
+$$\text{BWPenalty} = W_ {\text{bw}} \times \frac{U - 0.60}{1.0 - U} \quad (0.60 < U < 0.95)$$
+
   当带宽水位达到 $U \ge 0.95$ （即 `95%`）时标记为满载，**新发起的连接将自动无损溢出（Spillover）至次优空闲线路，且绝不中断当前主路已建立的存量连接**。
 
 ### 2. 两阶段选路决策流程与被动熔断主动核验
