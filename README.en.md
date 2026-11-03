@@ -4,6 +4,19 @@
 
 ---
 
+## Web Console Preview (`/smartroute`)
+
+### 1. Route Overview & Real-Time Path Cost Breakdown
+![SmartRoute Dashboard Overview](./smartroute/dashboard.png)
+
+### 2. Routing Algorithms, Smoothing Windows & Regex Policy Table
+![SmartRoute Policies & Weights](./smartroute/policies.png)
+
+### 3. Configuration Assessment & Decision Audit Logs
+![SmartRoute Decision Logs & Assessment](./smartroute/logs.png)
+
+---
+
 ## 1. Zero-Invasion Architecture & Seamless `sing-box` Upgrade
 
 ### SDK Integration (`smartroute.Context` & `smartroute.NewBox`)
