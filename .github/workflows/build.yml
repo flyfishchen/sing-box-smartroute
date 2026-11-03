@@ -68,7 +68,8 @@ jobs:
       - name: Clone SagerNet/sing-box (${{ needs.resolve-version.outputs.tag }})
         run: |
           git clone --depth 1 --branch "${{ needs.resolve-version.outputs.tag }}" https://github.com/SagerNet/sing-box.git sing-box-src
-          cp -r smartroute-ext/smartroute sing-box-src/
+          mkdir -p sing-box-src/smartroute
+          cp smartroute-ext/*.go smartroute-ext/*.html smartroute-ext/README* sing-box-src/smartroute/
           cp smartroute-ext/cmd/sing-box/smartroute.go sing-box-src/cmd/sing-box/
 
       - name: Set up Go
@@ -79,7 +80,7 @@ jobs:
 
       - name: Run SmartRoute Unit Tests
         working-directory: sing-box-src
-        run: go test -v ./smartroute/...
+        run: go test -v ./smartroute
 
   build:
     name: Build (${{ matrix.name }})
@@ -149,7 +150,8 @@ jobs:
       - name: Clone SagerNet/sing-box (${{ needs.resolve-version.outputs.tag }})
         run: |
           git clone --depth 1 --branch "${{ needs.resolve-version.outputs.tag }}" https://github.com/SagerNet/sing-box.git sing-box-src
-          cp -r smartroute-ext/smartroute sing-box-src/
+          mkdir -p sing-box-src/smartroute
+          cp smartroute-ext/*.go smartroute-ext/*.html smartroute-ext/README* sing-box-src/smartroute/
           cp smartroute-ext/cmd/sing-box/smartroute.go sing-box-src/cmd/sing-box/
 
       - name: Set up Go

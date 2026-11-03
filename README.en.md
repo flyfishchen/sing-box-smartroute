@@ -7,13 +7,13 @@
 ## Web Console Preview (`/smartroute`)
 
 ### 1. Route Overview & Real-Time Path Cost Breakdown
-![SmartRoute Dashboard Overview](./smartroute/dashboard.png)
+![SmartRoute Dashboard Overview](./dashboard.png)
 
 ### 2. Routing Algorithms, Smoothing Windows & Regex Policy Table
-![SmartRoute Policies & Weights](./smartroute/policies.png)
+![SmartRoute Policies & Weights](./policies.png)
 
 ### 3. Configuration Assessment & Decision Audit Logs
-![SmartRoute Decision Logs & Assessment](./smartroute/logs.png)
+![SmartRoute Decision Logs & Assessment](./logs.png)
 
 ---
 
