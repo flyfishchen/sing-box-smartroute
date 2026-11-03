@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#202020" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f7f7f7" media="(prefers-color-scheme: light)" />
+<title>yacd - SmartRoute</title>
+<style>
+  *, *:before, *:after {
+    box-sizing: border-box;
+  }
+  :root {
+    --font-mono: "Roboto Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    --font-normal: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Source Han Sans", "PingFang SC", "Microsoft YaHei", "微软雅黑";
+  }
+
+  /* Yacd-meta Exact Theme Variables */
+  @media (prefers-color-scheme: dark) {
+    :root[data-theme="auto"] {
+      --color-background: #111827;
+      --color-background2: rgba(17, 24, 39, 0.7);
+      --color-bg-chart: #1f2937;
+      --color-bg-card: #1f2937;
+      --color-focus-blue: #3b82f6;
+      --btn-bg: #3b82f6;
+      --color-proxy-border: #374151;
+      --card-hover-border-lightness: #60a5fa;
+      --color-text: #e5e7eb;
+      --color-text-secondary: #9ca3af;
+      --color-text-highlight: #f3f4f6;
+      --color-bg-sidebar: #1f2937;
+      --color-sb-active-row-bg: #374151;
+      --color-sb-active-row-font: #f3f4f6;
+      --color-input-bg: #374151;
+      --color-input-border: #4b5563;
+      --color-toggle-bg: #4b5563;
+      --color-toggle-selected: #1f2937;
+      --color-icon: #9ca3af;
+      --color-separator: #374151;
+      --color-btn-bg: #374151;
+      --color-btn-fg: #e5e7eb;
+      --color-bg-proxy: #1f2937;
+      --color-row-odd: #1f2937;
+      --bg-log-info-tag: #4b5563;
+      --bg-modal: #1f2937;
+      --bg-near-transparent: rgba(255, 255, 255, 0.05);
+      --bg-latency: rgba(31, 41, 55, 0.8);
+      --bg-tooltip: #1f2937;
+      --bc-tooltip: #374151;
+      --bg-log-info-card: #1f2937;
+      --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --border-radius: 12px;
+      color-scheme: dark;
+    }
+  }
+  @media (prefers-color-scheme: light) {
+    :root[data-theme="auto"] {
+      --color-background: #eef2f6;
+      --color-background2: rgba(238, 242, 246, 0.7);
+      --color-bg-chart: #f8fafc;
+      --color-bg-card: #f8fafc;
+      --color-focus-blue: #3b82f6;
+      --btn-bg: #3b82f6;
+      --color-proxy-border: #e2e8f0;
+      --card-hover-border-lightness: #60a5fa;
+      --color-text: #334155;
+      --color-text-secondary: #64748b;
+      --color-text-highlight: #0f172a;
+      --color-bg-sidebar: #f1f5f9;
+      --color-sb-active-row-bg: #e0e7ff;
+      --color-sb-active-row-font: #3730a3;
+      --color-input-bg: #f8fafc;
+      --color-input-border: #cbd5e1;
+      --color-toggle-bg: #e2e8f0;
+      --color-toggle-selected: #ffffff;
+      --color-icon: #64748b;
+      --color-separator: #e2e8f0;
+      --color-btn-bg: #f8fafc;
+      --color-btn-fg: #334155;
+      --color-bg-proxy: #f8fafc;
+      --color-row-odd: #f1f5f9;
+      --bg-log-info-tag: #e2e8f0;
+      --bg-modal: #f8fafc;
+      --bg-near-transparent: rgba(0, 0, 0, 0.05);
+      --bg-latency: rgba(255, 255, 255, 0.9);
+      --bg-tooltip: #f8fafc;
+      --bc-tooltip: #e2e8f0;
+      --bg-log-info-card: #f1f5f9;
+      --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      --border-radius: 12px;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="dark"] {
+    --color-background: #111827;
+    --color-background2: rgba(17, 24, 39, 0.7);
+    --color-bg-chart: #1f2937;
+    --color-bg-card: #1f2937;
+    --color-focus-blue: #3b82f6;
+    --btn-bg: #3b82f6;
+    --color-proxy-border: #374151;
+    --card-hover-border-lightness: #60a5fa;
+    --color-text: #e5e7eb;
+    --color-text-secondary: #9ca3af;
+    --color-text-highlight: #f3f4f6;
+    --color-bg-sidebar: #1f2937;
+    --color-sb-active-row-bg: #374151;
+    --color-sb-active-row-font: #f3f4f6;
+    --color-input-bg: #374151;
+    --color-input-border: #4b5563;
+    --color-toggle-bg: #4b5563;
+    --color-toggle-selected: #1f2937;
+    --color-icon: #9ca3af;
+    --color-separator: #374151;
+    --color-btn-bg: #374151;
+    --color-btn-fg: #e5e7eb;
+    --color-bg-proxy: #1f2937;
+    --color-row-odd: #1f2937;
+    --bg-log-info-tag: #4b5563;
+    --bg-modal: #1f2937;
+    --bg-near-transparent: rgba(255, 255, 255, 0.05);
+    --bg-latency: rgba(31, 41, 55, 0.8);
+    --bg-tooltip: #1f2937;
+    --bc-tooltip: #374151;
+    --bg-log-info-card: #1f2937;
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --border-radius: 12px;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --color-background: #eef2f6;
+    --color-background2: rgba(238, 242, 246, 0.7);
+    --color-bg-chart: #f8fafc;
+    --color-bg-card: #f8fafc;
+    --color-focus-blue: #3b82f6;
+    --btn-bg: #3b82f6;
+    --color-proxy-border: #e2e8f0;
+    --card-hover-border-lightness: #60a5fa;
+    --color-text: #334155;
+    --color-text-secondary: #64748b;
+    --color-text-highlight: #0f172a;
+    --color-bg-sidebar: #f1f5f9;
+    --color-sb-active-row-bg: #e0e7ff;
+    --color-sb-active-row-font: #3730a3;
+    --color-input-bg: #f8fafc;
+    --color-input-border: #cbd5e1;
+    --color-toggle-bg: #e2e8f0;
+    --color-toggle-selected: #ffffff;
+    --color-icon: #64748b;
+    --color-separator: #e2e8f0;
+    --color-btn-bg: #f8fafc;
+    --color-btn-fg: #334155;
+    --color-bg-proxy: #f8fafc;
+    --color-row-odd: #f1f5f9;
+    --bg-log-info-tag: #e2e8f0;
+    --bg-modal: #f8fafc;
+    --bg-near-transparent: rgba(0, 0, 0, 0.05);
+    --bg-latency: rgba(255, 255, 255, 0.9);
+    --bg-tooltip: #f8fafc;
+    --bc-tooltip: #e2e8f0;
+    --bg-log-info-card: #f1f5f9;
+    --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --border-radius: 12px;
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-normal);
+    background: var(--color-background);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background: transparent;
+  }
+  body ::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: var(--color-focus-blue);
+  }
+
+  /* Yacd App Shell */
+  .yacd-app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    background: var(--color-background);
+    color: var(--color-text);
+  }
+  @media (max-width: 768px) {
+    .yacd-app {
+      flex-direction: column;
+    }
+  }
+
+  /* Yacd Sidebar */
+  .yacd-sidebar {
+    background: var(--color-bg-sidebar);
+    width: 180px;
+    min-width: 180px;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+  .yacd-logo-wrap {
+    margin: 18px 0 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .yacd-logo-svg {
+    width: 68px;
+    height: 68px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.16), rgba(59, 130, 246, 0.06));
+    border: 1px solid var(--color-separator);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-focus-blue);
+    box-shadow: var(--shadow-card);
+  }
+  .yacd-logo-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.04em;
+  }
+  .sb-nav {
+    display: flex;
+    flex-direction: column;
+  }
+  .sb-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px;
+    margin: 4px 8px;
+    border-radius: 8px;
+    color: var(--color-text);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  }
+  .sb-row:hover {
+    background-color: #b0ceff38;
+    color: var(--color-focus-blue);
+  }
+  .sb-row svg {
+    color: var(--color-icon);
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    transition: transform 0.18s ease;
+  }
+  .sb-row:hover svg {
+    color: var(--color-focus-blue);
+  }
+  .sb-row.active {
+    background: linear-gradient(135deg, #60a5fa 0%, var(--color-focus-blue) 100%);
+    color: #fff;
+  }
+  .sb-row.active svg {
+    color: #fff;
+  }
+  .sb-row.active .sb-label {
+    font-weight: 600;
+  }
+  .sb-label {
+    padding-left: 14px;
+    font-size: 0.95em;
+  }
+  .sb-footer {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .theme-switch-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 100%;
+    border: 1px solid var(--color-separator);
+    background: var(--color-bg-card);
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.2s ease, border-color 0.2s ease;
+    box-shadow: var(--shadow-card);
+  }
+  .theme-switch-btn:hover {
+    opacity: 0.75;
+    border-color: var(--color-focus-blue);
+  }
+  .sb-version {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 768px) {
+    .yacd-sidebar {
+      width: 100%;
+      min-width: 0;
+      background: var(--color-background);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 8px 12px;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--color-separator);
+    }
+    .yacd-logo-wrap, .sb-footer {
+      display: none;
+    }
+    .sb-nav {
+      flex-direction: row;
+      width: 100%;
+      gap: 4px;
+    }
+    .sb-row {
+      flex: 1;
+      justify-content: center;
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 12px;
+    }
+    .sb-label {
+      display: none;
+    }
+  }
+
+  /* Yacd Main Content */
+  .yacd-content {
+    flex-grow: 1;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 80px;
+  }
+  @media (max-width: 768px) {
+    .yacd-content {
+      padding-top: 60px;
+    }
+  }
+
+  /* Yacd Sticky Top Bar & Header */
+  .yacd-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--color-background2);
+    -webkit-backdrop-filter: blur(36px);
+    backdrop-filter: blur(36px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 8px 40px;
+    min-height: 64px;
+    gap: 12px;
+  }
+  @media (max-width: 768px) {
+    .yacd-topbar {
+      padding: 8px 15px;
+    }
+  }
+  .yacd-h1 {
+    font-size: 1.85em;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-highlight);
+    letter-spacing: -0.02em;
+  }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Yacd Tabs Container */
+  .yacd-tabs {
+    display: flex;
+    align-items: center;
+    background-color: var(--color-bg-sidebar);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid var(--color-separator);
+  }
+  .yacd-tab {
+    display: flex;
+    align-items: center;
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.92em;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+  .yacd-tab:hover {
+    color: var(--color-focus-blue);
+    background: #b0ceff38;
+  }
+  .yacd-tab.active {
+    background-color: var(--color-focus-blue);
+    color: #fff;
+  }
+  .yacd-tab-count {
+    font-size: 0.72em;
+    margin-left: 6px;
+    padding: 2px 7px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #ffffff26;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  /* Yacd Input & Pill Buttons */
+  .yacd-input {
+    appearance: none;
+    background-color: var(--color-input-bg);
+    border-radius: 8px;
+    border: 1px solid var(--color-input-border);
+    color: var(--color-text);
+    font-size: 0.9em;
+    outline: none;
+    padding: 0 14px;
+    height: 36px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px #0000000f;
+  }
+  .yacd-input:focus {
+    border-color: var(--color-focus-blue);
+    box-shadow: 0 0 0 3px #4285f426;
+  }
+  .yacd-btn {
+    outline: none;
+    user-select: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: var(--color-btn-fg);
+    background: var(--color-btn-bg);
+    border: 1px solid var(--color-input-border);
+    border-radius: 100px;
+    font-size: 12.5px;
+    padding: 6px 13px;
+    transition: all 0.2s ease;
+  }
+  .yacd-btn:hover {
+    color: #fff;
+    background: var(--color-focus-blue);
+    border-color: var(--color-focus-blue);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -1px #0000000f;
+  }
+  .yacd-btn.primary {
+    color: #fff;
+    background: var(--color-focus-blue);
+    border-color: var(--color-focus-blue);
+  }
+
+  /* Page Sections */
+  .yacd-section {
+    margin: 12px 40px 24px;
+  }
+  @media (max-width: 768px) {
+    .yacd-section {
+      margin: 10px 15px 18px;
+    }
+  }
+
+  /* Yacd Card / Log-Info Card style */
+  .yacd-card {
+    padding: 16px 18px;
+    background-color: var(--bg-log-info-card);
+    border: 1px solid var(--color-separator);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-card);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .yacd-card:hover {
+    border-color: var(--color-focus-blue);
+  }
+
+  /* Summary KPI Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .kpi-title {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .kpi-num {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--color-text-highlight);
+  }
+  .kpi-desc {
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    margin-top: 6px;
+  }
+
+  /* Yacd Proxy Group Header & Availability Bar */
+  .group-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 6px 4px;
+  }
+  .group-title-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .group-title-wrap h2 {
+    margin: 0;
+    font-size: 1.25em;
+    color: var(--color-text-highlight);
+  }
+  .group-type-tag {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    font-family: var(--font-mono);
+  }
+  .group-now-pill {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--bg-near-transparent);
+    border: 1px solid var(--color-separator);
+    color: var(--color-focus-blue);
+    font-weight: 600;
+  }
+  .avail-bar {
+    margin: 8px 0 10px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .avail-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-separator);
+    overflow: hidden;
+    display: flex;
+  }
+  .avail-fill-ok {
+    height: 100%;
+    background: #67c23a;
+    transition: width 0.4s ease;
+  }
+  .avail-fill-warn {
+    height: 100%;
+    background: #e6a23c;
+    transition: width 0.4s ease;
+  }
+  .proxy-dots-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    padding-left: 2px;
+  }
+  .proxy-small-dot {
+    position: relative;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.12s ease-in-out;
+  }
+  .proxy-small-dot:hover {
+    transform: scale(1.45);
+  }
+  .proxy-small-dot.now::after {
+    content: "";
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    margin: auto;
+    inset: 0;
+    border-radius: 50%;
+    background-color: #fffdfd;
+  }
+
+  /* Yacd Signature Proxy Card Grid (._list_vqwkl_4 ._detail_vqwkl_10) */
+  .proxy-grid {
+    margin: 8px 0 18px;
+    display: grid;
+    grid-gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+  }
+  .proxy-card {
+    padding: 10px 12px;
+    position: relative;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid var(--color-proxy-border);
+    background-color: var(--color-bg-proxy);
+    color: var(--color-text);
+    gap: 7px;
+  }
+  .proxy-card:hover {
+    border-color: var(--card-hover-border-lightness);
+    box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -2px #0000000d;
+    z-index: 1;
+  }
+  .proxy-card.now {
+    background-color: var(--color-sb-active-row-bg);
+    color: var(--color-sb-active-row-font);
+    border-color: var(--color-focus-blue);
+  }
+  .proxy-card.error {
+    opacity: 0.5;
+  }
+  .proxy-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .proxy-name {
+    font-size: 0.88em;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .proxy-tier-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--bg-near-transparent);
+    border: 1px solid var(--color-separator);
+    flex-shrink: 0;
+  }
+  .proxy-smartroute-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    background: var(--bg-near-transparent);
+    padding: 6px 8px;
+    border-radius: 8px;
+  }
+  .proxy-card.now .proxy-smartroute-metrics {
+    color: inherit;
+    opacity: 0.9;
+  }
+  .proxy-bw-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-separator);
+    overflow: hidden;
+    margin-top: 2px;
+  }
+  .proxy-bw-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+  .proxy-bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+  }
+  .proxy-type {
+    font-family: var(--font-mono);
+    font-size: 0.7em;
+    color: #f596aa;
+    opacity: 0.75;
+    text-transform: uppercase;
+  }
+  .proxy-card.now .proxy-type {
+    color: inherit;
+    opacity: 0.85;
+  }
+  .udp-type {
+    font-family: var(--font-mono);
+    font-size: 0.7em;
+    color: #51a8dd;
+    opacity: 0.75;
+  }
+  .proxy-card.now .udp-type {
+    color: inherit;
+    opacity: 0.85;
+  }
+  /* Yacd Pill Latency Button (._proxyLatency_1t6dc_4) */
+  .proxy-latency {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 54px;
+    padding: 4px 10px;
+    gap: 4px;
+    border-radius: 9999px;
+    border: 1px solid var(--color-proxy-border);
+    background: var(--bg-latency);
+    font-family: var(--font-mono);
+    font-size: 0.76em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .proxy-latency:hover {
+    background: var(--color-bg-proxy);
+    border-color: var(--card-hover-border-lightness);
+    box-shadow: 0 8px 24px #0000002e;
+    transform: translateY(-1px);
+  }
+
+  /* Charts Grid */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 1080px) {
+    .charts-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .chart-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-highlight);
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+  }
+  .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+  }
+  .breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .breakdown-item {
+    display: grid;
+    grid-template-columns: 145px 1fr 78px;
+    align-items: center;
+    gap: 10px;
+    font-size: 12.5px;
+  }
+  .breakdown-bar {
+    height: 16px;
+    background: var(--bg-near-transparent);
+    border: 1px solid var(--color-separator);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+  }
+  .breakdown-seg {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+
+  /* Yacd Rule/Provider style List for Policy Management */
+  .yacd-list-wrapper {
+    background-color: var(--bg-log-info-card);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-separator);
+    overflow: hidden;
+  }
+  .yacd-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--color-separator);
+    transition: background-color 0.2s ease;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .yacd-list-item:last-child {
+    border-bottom: none;
+  }
+  .yacd-list-item:hover {
+    background-color: var(--bg-near-transparent);
+  }
+  .policy-grid-row {
+    display: grid;
+    grid-template-columns: 1.8fr 0.7fr 0.9fr 1fr 0.8fr auto;
+    gap: 10px;
+    width: 100%;
+    align-items: center;
+  }
+  @media (max-width: 768px) {
+    .policy-grid-row {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  /* Yacd Floating Action Button (.fabgrp) */
+  .fabgrp {
+    position: fixed;
+    z-index: 30;
+    right: 24px;
+    bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .fab-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #60a5fa 0%, var(--color-focus-blue) 100%);
+    color: #fff;
+    box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.55);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .fab-btn:hover {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: 0 14px 24px -4px rgba(59, 130, 246, 0.7);
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .spinning svg {
+    animation: spin 1s linear infinite;
+  }
+
+  /* Tooltip / Toast */
+  .yacd-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    z-index: 200;
+    padding: 8px 16px;
+    background: var(--bg-tooltip);
+    color: var(--color-text);
+    border: 1px solid var(--bc-tooltip);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    font-size: 13px;
+    display: none;
+  }
+
+  /* Configuration Help (?) Badge & Floating Popover */
+  .help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: 5px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+    background: var(--bg-near-transparent);
+    border: 1px solid var(--color-separator);
+    cursor: help;
+    vertical-align: middle;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .help-tip:hover {
+    color: #fff;
+    background: var(--color-focus-blue);
+    border-color: var(--color-focus-blue);
+    transform: scale(1.1);
+  }
+  .yacd-help-popover {
+    position: fixed;
+    z-index: 300;
+    max-width: 340px;
+    padding: 12px 14px;
+    background: var(--bg-tooltip);
+    color: var(--color-text);
+    border: 1px solid var(--bc-tooltip);
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+    font-size: 12px;
+    line-height: 1.55;
+    pointer-events: none;
+    display: none;
+  }
+  .yacd-help-popover .tip-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--color-focus-blue);
+    margin-bottom: 6px;
+  }
+  .yacd-help-popover .tip-row {
+    margin-top: 4px;
+    color: var(--color-text-secondary);
+  }
+  .yacd-help-popover .tip-row b {
+    color: var(--color-text-highlight);
+  }
+  .cfg-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+</style>
+</head>
+<body>
+
+<div class="yacd-app">
+  <!-- Left Sidebar (Yacd-meta style) -->
+  <aside class="yacd-sidebar">
+    <div class="yacd-logo-wrap">
+      <div class="yacd-logo-svg" title="Yacd-meta SmartRoute">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+      </div>
+      <span class="yacd-logo-sub">SMART ROUTE</span>
+    </div>
+
+    <nav class="sb-nav">
+      <a class="sb-row active" data-view="proxies" onclick="switchView('proxies')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        <span class="sb-label" data-i18n="nav_proxies">线路总览</span>
+      </a>
+      <a class="sb-row" data-view="analytics" onclick="switchView('analytics')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span class="sb-label" data-i18n="nav_analytics">质量分析</span>
+      </a>
+      <a class="sb-row" data-view="policies" onclick="switchView('policies')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="sb-label" data-i18n="nav_policies">策略配置</span>
+      </a>
+      <a class="sb-row" data-view="logs" onclick="switchView('logs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span class="sb-label" data-i18n="nav_logs">决策日志</span>
+      </a>
+      <a class="sb-row" href="/ui/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span class="sb-label" data-i18n="nav_yacd">Yacd 面板</span>
+      </a>
+    </nav>
+
+    <div class="sb-footer">
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button class="theme-switch-btn" id="themeBtn" title="Theme (Auto / Dark / Light)">
+          <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <button class="theme-switch-btn" id="langBtn" title="切换语言 / Switch Language" style="font-family:var(--font-mono);font-size:11px;font-weight:700;">
+          ZH
+        </button>
+      </div>
+      <span class="sb-version" id="versionTag">sing-box</span>
+    </div>
+  </aside>
+
+  <!-- Right Main Content Area -->
+  <main class="yacd-content">
+    <!-- Sticky Blur Topbar -->
+    <div class="yacd-topbar">
+      <h1 class="yacd-h1" id="pageTitle">智能选路代理组</h1>
+      <div class="topbar-right">
+        <div class="yacd-tabs" id="groupTabs"></div>
+        <input type="text" class="yacd-input" id="filterInput" data-i18n-placeholder="filter_placeholder" placeholder="过滤节点名称 / 层级..." style="width:175px;" />
+        <input type="password" class="yacd-input" id="secretInput" placeholder="API Secret" style="width:120px;" />
+      </div>
+    </div>
+
+    <!-- Section: KPI Overview Cards -->
+    <div class="yacd-section" style="margin-bottom: 12px;">
+      <div class="kpi-grid">
+        <div class="yacd-card">
+          <div class="kpi-title">
+            <span data-i18n="kpi_active_title">当前主路 / 实际承载</span>
+            <span id="kpiModeBadge" class="group-now-pill">PRIMARY</span>
+          </div>
+          <div class="kpi-num" id="kpiActiveNode">-</div>
+          <div class="kpi-desc" id="kpiSwitchInfo">-</div>
+        </div>
+        <div class="yacd-card">
+          <div class="kpi-title">
+            <span data-i18n="kpi_sla_title">SLA 健康状态分布</span>
+            <span style="font-family:var(--font-mono)" id="kpiAvailPct">100%</span>
+          </div>
+          <div class="kpi-num" id="kpiHealthMatrix">-</div>
+          <div class="kpi-desc" id="kpiHealthSub">-</div>
+        </div>
+        <div class="yacd-card">
+          <div class="kpi-title">
+            <span data-i18n="kpi_cost_title">最优路径综合代价</span>
+            <span style="font-family:var(--font-mono)" data-i18n="kpi_cost_tag">综合度量</span>
+          </div>
+          <div class="kpi-num" id="kpiBestScore">-</div>
+          <div class="kpi-desc" id="kpiBestScoreSub">-</div>
+        </div>
+        <div class="yacd-card">
+          <div class="kpi-title">
+            <span data-i18n="kpi_bw_title">实时吞吐速率 / 累计流量</span>
+            <span style="font-family:var(--font-mono)" id="kpiPeakBw">0 Mbps</span>
+          </div>
+          <div class="kpi-num" id="kpiThroughput">0.00 Mbps</div>
+          <div class="kpi-desc" id="kpiTotalTraffic">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View 1: Proxies & Analytics Combined -->
+    <div class="yacd-section" id="viewProxies">
+      <div class="yacd-card" style="margin-bottom: 16px;">
+        <div class="group-header-row">
+          <div class="group-title-wrap">
+            <h2 id="groupHeaderName">URLTest</h2>
+            <span class="group-type-tag">SmartRoute URLTest</span>
+            <span class="group-now-pill" id="groupNowTag">-</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="yacd-btn" onclick="switchView('policies')" data-i18n="btn_policies">⚙️ 策略与权重</button>
+            <button class="yacd-btn primary" onclick="probeCurrentGroup()" data-i18n="btn_probe_all">⚡ 全组测速</button>
+          </div>
+        </div>
+
+        <!-- Yacd Availability Bar -->
+        <div class="avail-bar">
+          <div class="avail-track">
+            <div class="avail-fill-ok" id="availBarOk" style="width:100%"></div>
+            <div class="avail-fill-warn" id="availBarWarn" style="width:0%"></div>
+          </div>
+          <span style="font-size:11px;font-family:var(--font-mono);color:var(--color-text-secondary)" id="availSummaryText">0/0</span>
+        </div>
+
+        <!-- Yacd Summary Dots -->
+        <div class="proxy-dots-row" id="proxyDotsRow"></div>
+
+        <!-- Yacd Proxy Card Grid -->
+        <div class="proxy-grid" id="proxyCardsGrid"></div>
+      </div>
+    </div>
+
+    <!-- View 2: Visual Analytics Charts -->
+    <div class="yacd-section" id="viewAnalytics">
+      <div class="charts-grid">
+        <div class="yacd-card">
+          <div class="chart-header">
+            <span class="chart-title"><span data-i18n="chart_breakdown_title">选路综合代价构成</span><span class="help-tip" data-tip-key="tip_chart_breakdown">?</span></span>
+            <div class="legend-row">
+              <span><i class="legend-dot" style="background:#3b82f6"></i><span data-i18n="leg_rtt">平滑延迟</span></span>
+              <span><i class="legend-dot" style="background:#e6a23c"></i><span data-i18n="leg_sla">抖动/丢包/惩罚</span></span>
+              <span><i class="legend-dot" style="background:#51a8dd"></i><span data-i18n="leg_bw">带宽代价</span></span>
+              <span><i class="legend-dot" style="background:#f596aa"></i><span data-i18n="leg_cost">成本代价</span></span>
+              <span><i class="legend-dot" style="background:#67c23a"></i><span data-i18n="leg_pref">线路偏好补贴</span></span>
+            </div>
+          </div>
+          <div class="breakdown-list" id="scoreBreakdownList"></div>
+        </div>
+
+        <div class="yacd-card">
+          <div class="chart-header">
+            <span class="chart-title"><span data-i18n="chart_trend_title">线路综合代价实时轨迹</span><span class="help-tip" data-tip-key="tip_chart_trend">?</span></span>
+            <div class="legend-row" id="trendLegend"></div>
+          </div>
+          <canvas id="trendCanvas" width="620" height="230" style="width:100%;height:230px;display:block;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- View 3: Policy & Weight Configuration (Yacd Settings / RuleProvider List style) -->
+    <div class="yacd-section" id="viewPolicies" style="display:none;">
+      <div class="yacd-list-wrapper" style="margin-bottom: 16px;">
+        <div class="yacd-list-item">
+          <div>
+            <div style="font-weight:600;color:var(--color-text-highlight)">
+              <span data-i18n="cfg_sec_algo">选路决策核心算法</span>
+              <span class="help-tip" data-tip-key="tip_sec_algo">?</span>
+            </div>
+            <div style="font-size:12px;color:var(--color-text-secondary)" data-i18n="cfg_sec_algo_desc">针对不同网络环境选择最匹配的智能选路模型（如通用加权、100~1000ms 剧烈波动抗抖动、SLA 死锁粘滞或语音 MOS 模型）</div>
+            <div id="algoActiveHint" style="font-size:11.5px;font-family:var(--font-mono);color:var(--color-focus-blue);margin-top:4px;"></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <label class="cfg-label">
+              <span data-i18n="lbl_algorithm">选路算法</span>
+              <span class="help-tip" data-tip-key="tip_algorithm">?</span>:
+              <select id="cfgAlgorithm" class="yacd-input" style="min-width:250px;padding:0 10px;">
+                <option value="composite" data-i18n="algo_composite">多维加权综合代价法 (默认通用)</option>
+                <option value="lcb_robust" data-i18n="algo_lcb_robust">置信上界抗波动法 (专治 100~1000ms 全员剧烈波动)</option>
+                <option value="sticky_sla" data-i18n="algo_sticky_sla">SLA 粘滞死锁法 (不破 SLA 红线绝不切换)</option>
+                <option value="mos_itu" data-i18n="algo_mos_itu">ITU-T G.107 实时交互法 (语音/游戏 177ms 拐点模型)</option>
+                <option value="lowest_rtt" data-i18n="algo_lowest_rtt">经典极简延迟优先法 (仅看平滑延迟与偏好)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="yacd-list-item">
+          <div>
+            <div style="font-weight:600;color:var(--color-text-highlight)">
+              <span data-i18n="cfg_sec_hysteresis">防震荡容差与驻留控制</span>
+              <span class="help-tip" data-tip-key="tip_sec_hysteresis">?</span>
+            </div>
+            <div style="font-size:12px;color:var(--color-text-secondary)" data-i18n="cfg_sec_hysteresis_desc">非故障优选切换需满足综合代价容差门限并渡过最短驻留保护期</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <label class="cfg-label">
+              <span data-i18n="lbl_tolerance">容差 (代价)</span>
+              <span class="help-tip" data-tip-key="tip_tolerance">?</span>:
+              <input type="number" id="cfgTolerance" class="yacd-input" style="width:80px" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_hold_time">驻留期 (ms)</span>
+              <span class="help-tip" data-tip-key="tip_hold_time">?</span>:
+              <input type="number" id="cfgHoldTime" class="yacd-input" style="width:95px" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_fail_thresh">熔断连续失败数</span>
+              <span class="help-tip" data-tip-key="tip_fail_thresh">?</span>:
+              <input type="number" id="cfgFailureThreshold" class="yacd-input" style="width:70px" />
+            </label>
+          </div>
+        </div>
+
+        <div class="yacd-list-item">
+          <div>
+            <div style="font-weight:600;color:var(--color-text-highlight)">
+              <span data-i18n="cfg_sec_windows">探测采样与统计平滑窗口</span>
+              <span class="help-tip" data-tip-key="tip_sec_windows">?</span>
+            </div>
+            <div style="font-size:12px;color:var(--color-text-secondary)" data-i18n="cfg_sec_windows_desc">控制主动测速探针采样周期、延迟/抖动/丢包平滑记忆长度、惩罚衰减速度与实时带宽统计窗口</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <label class="cfg-label">
+              <span data-i18n="lbl_interval_sec">探测周期 (s)</span>
+              <span class="help-tip" data-tip-key="tip_interval">?</span>:
+              <input type="number" id="cfgIntervalSec" min="5" step="5" class="yacd-input" style="width:76px" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_stat_window">平滑窗口 (次)</span>
+              <span class="help-tip" data-tip-key="tip_stat_window">?</span>:
+              <input type="number" id="cfgStatWindow" min="1" max="50" step="1" class="yacd-input" style="width:68px" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_penalty_hl">惩罚半衰期 (s)</span>
+              <span class="help-tip" data-tip-key="tip_penalty_hl">?</span>:
+              <input type="number" id="cfgPenaltyHalfLifeSec" min="5" step="5" class="yacd-input" style="width:76px" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_bw_window">带宽窗口 (s)</span>
+              <span class="help-tip" data-tip-key="tip_bw_window">?</span>:
+              <input type="number" id="cfgBwWindowSec" min="1" max="30" step="1" class="yacd-input" style="width:68px" />
+            </label>
+          </div>
+        </div>
+
+        <div class="yacd-list-item">
+          <div>
+            <div style="font-weight:600;color:var(--color-text-highlight)">
+              <span data-i18n="cfg_sec_sla">分层 SLA 溢出水位门限</span>
+              <span class="help-tip" data-tip-key="tip_sec_sla">?</span>
+            </div>
+            <div style="font-size:12px;color:var(--color-text-secondary)" data-i18n="cfg_sec_sla_desc">当高优先级层级的平滑延迟、丢包率或带宽水位 (≥95%) 超限时，自动溢出至下一级</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <label class="cfg-label">
+              <span data-i18n="lbl_max_latency">最大延迟 (ms)</span>
+              <span class="help-tip" data-tip-key="tip_max_latency">?</span>:
+              <input type="number" id="cfgMaxLatency" class="yacd-input" style="width:90px" min="50" step="50" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_max_loss">最大丢包率 (%)</span>
+              <span class="help-tip" data-tip-key="tip_max_loss">?</span>:
+              <input type="number" id="cfgMaxLoss" min="1" max="100" step="1" class="yacd-input" style="width:80px" />
+            </label>
+          </div>
+        </div>
+
+        <div class="yacd-list-item">
+          <div>
+            <div style="font-weight:600;color:var(--color-text-highlight)">
+              <span data-i18n="cfg_sec_weights">多维选路代价权重</span>
+              <span class="help-tip" data-tip-key="tip_sec_weights">?</span>
+            </div>
+            <div style="font-size:12px;color:var(--color-text-secondary)" data-i18n="cfg_sec_weights_desc">按各维度权重计算节点选路综合代价（越低越优先）：平滑延迟 + 抖动代价 + 丢包代价 + 带宽代价 + 成本代价 + 线路偏好</div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+            <label class="cfg-label">
+              <span data-i18n="lbl_jitter_w">抖动权重</span>
+              <span class="help-tip" data-tip-key="tip_jitter_w">?</span>:
+              <input type="number" id="cfgJitterWeight" step="0.5" class="yacd-input" style="width:72px" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_loss_w">丢包权重</span>
+              <span class="help-tip" data-tip-key="tip_loss_w">?</span>:
+              <input type="number" id="cfgLossWeight" step="0.5" class="yacd-input" style="width:72px" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_bw_w">带宽权重</span>
+              <span class="help-tip" data-tip-key="tip_bw_w">?</span>:
+              <input type="number" id="cfgBandwidthWeight" step="5" class="yacd-input" style="width:72px" />
+            </label>
+            <label class="cfg-label">
+              <span data-i18n="lbl_cost_w">成本权重</span>
+              <span class="help-tip" data-tip-key="tip_cost_w">?</span>:
+              <input type="number" id="cfgCostWeight" step="5" class="yacd-input" style="width:72px" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="yacd-list-wrapper">
+        <div class="yacd-list-item" style="background:var(--bg-near-transparent)">
+          <div>
+            <div style="font-weight:600;color:var(--color-text-highlight)">
+              <span data-i18n="cfg_sec_policies">线路偏好、额定带宽与成本倍率策略表</span>
+              <span class="help-tip" data-tip-key="tip_sec_policies">?</span>
+            </div>
+            <div style="font-size:12px;color:var(--color-text-secondary)" data-i18n="cfg_sec_policies_desc">按顺序匹配节点名称正则（如 IPLC / CN2 / 9929 / CMI），赋予分层、偏好代价补贴、带宽上限与成本系数</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="yacd-btn" id="presetPolicyBtn" data-i18n="btn_preset">✨ 填入典型线路预设</button>
+            <button class="yacd-btn" id="addPolicyRowBtn" data-i18n="btn_add_rule">+ 新增规则</button>
+            <button class="yacd-btn primary" id="saveConfigBtn" data-i18n="btn_save">💾 保存并立即生效</button>
+          </div>
+        </div>
+        <div id="policyRowsContainer"></div>
+      </div>
+    </div>
+
+    <!-- View 4: Decision Audit Logs & Switching Configuration Assessment -->
+    <div class="yacd-section" id="viewLogs">
+      <div class="yacd-card" style="margin-bottom: 14px;">
+        <div class="chart-header">
+          <span class="chart-title">
+            <span data-i18n="diag_title">切换配置合理性实时诊断</span>
+            <span class="help-tip" data-tip-key="tip_diag">?</span>
+          </span>
+          <div class="legend-row" id="diagStatsBadges"></div>
+        </div>
+        <div class="kpi-grid" id="assessmentCardsGrid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));"></div>
+      </div>
+
+      <div class="yacd-list-wrapper">
+        <div class="yacd-list-item" style="background:var(--bg-near-transparent)">
+          <div>
+            <div style="font-weight:600;color:var(--color-text-highlight)" data-i18n="log_title">选路决策与防震荡拦截日志</div>
+            <div style="font-size:12px;color:var(--color-text-secondary)" data-i18n="log_desc">记录主路切换、容差/驻留期拦截、带宽溢出与被动熔断事件及新旧节点五维代价对比公式</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="logTypeFilterBtns">
+            <button class="yacd-btn" onclick="setLogFilter('all')" data-i18n="log_f_all">全部</button>
+            <button class="yacd-btn" onclick="setLogFilter('switch')" data-i18n="log_f_switch">主路切换</button>
+            <button class="yacd-btn" onclick="setLogFilter('suppressed')" data-i18n="log_f_suppressed">拦截抑制</button>
+            <button class="yacd-btn" onclick="setLogFilter('overflow')" data-i18n="log_f_overflow">带宽溢出</button>
+            <button class="yacd-btn" onclick="setLogFilter('circuit_breaker')" data-i18n="log_f_circuit">被动熔断</button>
+          </div>
+        </div>
+        <div id="decisionLogsContainer"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Yacd Floating Action Button -->
+<div class="fabgrp">
+  <button class="fab-btn" id="fabProbeBtn" onclick="probeCurrentGroup()">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+    </svg>
+  </button>
+</div>
+
+<div class="yacd-toast" id="toast"></div>
+<div class="yacd-help-popover" id="helpPopover"></div>
+
+<script>
+const CHART_COLORS = ['#3b82f6', '#67c23a', '#e6a23c', '#f596aa', '#51a8dd', '#a78bfa', '#22d3ee', '#f97316'];
+const THEMES = ['auto', 'dark', 'light'];
+
+const I18N = {
+  zh: {
+    nav_proxies: '线路总览',
+    nav_analytics: '质量分析',
+    nav_policies: '策略配置',
+    nav_logs: '决策日志',
+    nav_yacd: '返回主面板',
+    title_proxies: '智能选路代理组',
+    title_analytics: '线路质量与代价分析',
+    title_policies: '选路策略与权重配置',
+    title_logs: '选路决策日志与配置评估',
+    filter_placeholder: '过滤节点名称 / 层级...',
+    kpi_active_title: '当前主路 / 实际承载',
+    kpi_sla_title: '健康状态分布',
+    kpi_cost_title: '最优路径综合代价',
+    kpi_cost_tag: '综合度量',
+    kpi_bw_title: '实时吞吐速率 / 累计流量',
+    mode_overflow: '溢出分流',
+    mode_primary: '主路锁定',
+    stay_stable: '稳定驻留中',
+    btn_policies: '⚙️ 策略与权重',
+    btn_probe_all: '⚡ 全组测速',
+    chart_breakdown_title: '选路综合代价构成',
+    chart_trend_title: '线路综合代价实时轨迹',
+    leg_rtt: '平滑延迟',
+    leg_sla: '抖动/丢包/惩罚',
+    leg_bw: '带宽代价',
+    leg_cost: '成本代价',
+    leg_pref: '线路偏好补贴',
+    cfg_sec_algo: '选路决策核心算法',
+    cfg_sec_algo_desc: '针对不同网络环境选择最匹配的智能选路模型（如通用加权、100~1000ms 剧烈波动抗抖动、SLA 死锁粘滞或语音 MOS 模型）',
+    lbl_algorithm: '选路算法',
+    algo_composite: '多维加权综合代价法 (默认通用)',
+    algo_lcb_robust: '置信上界抗波动法 (专治 100~1000ms 全员剧烈波动)',
+    algo_sticky_sla: 'SLA 粘滞死锁法 (不破 SLA 红线绝不切换)',
+    algo_mos_itu: 'ITU-T G.107 实时交互法 (语音/游戏 177ms 拐点模型)',
+    algo_lowest_rtt: '经典极简延迟优先法 (仅看平滑延迟与偏好)',
+    cfg_sec_hysteresis: '防震荡容差与驻留控制',
+    cfg_sec_hysteresis_desc: '非故障优选切换需满足综合代价容差门限并渡过最短驻留保护期',
+    lbl_tolerance: '容差 (代价)',
+    lbl_hold_time: '驻留期 (ms)',
+    lbl_fail_thresh: '熔断连续失败数',
+    cfg_sec_windows: '探测采样与统计平滑窗口',
+    cfg_sec_windows_desc: '控制主动测速探针采样周期、延迟/抖动/丢包平滑记忆长度、惩罚衰减速度与实时带宽统计窗口',
+    lbl_interval_sec: '探测周期 (s)',
+    lbl_stat_window: '平滑窗口 (次)',
+    lbl_penalty_hl: '惩罚半衰期 (s)',
+    lbl_bw_window: '带宽窗口 (s)',
+    cfg_sec_sla: '分层溢出水位门限',
+    cfg_sec_sla_desc: '当高优先级层级的平滑延迟、丢包率或带宽水位 (≥95%) 超限时，自动溢出至下一级',
+    lbl_max_latency: '最大延迟 (ms)',
+    lbl_max_loss: '最大丢包率 (%)',
+    cfg_sec_weights: '多维选路代价权重',
+    cfg_sec_weights_desc: '按各维度权重计算节点选路综合代价（越低越优先）：平滑延迟 + 抖动代价 + 丢包代价 + 带宽代价 + 成本代价 + 线路偏好',
+    lbl_jitter_w: '抖动权重',
+    lbl_loss_w: '丢包权重',
+    lbl_bw_w: '带宽权重',
+    lbl_cost_w: '成本权重',
+    cfg_sec_policies: '线路偏好、额定带宽与成本倍率策略表',
+    cfg_sec_policies_desc: '按顺序匹配节点名称正则，赋予线路层级、偏好代价补贴、额定带宽上限与成本系数',
+    btn_preset: '✨ 填入典型线路预设',
+    btn_add_rule: '+ 新增规则',
+    btn_save: '💾 保存并立即生效',
+    lbl_p_match: '匹配正则',
+    lbl_p_tier: '线路层级',
+    lbl_p_pref: '偏好补贴 (代价)',
+    lbl_p_bw: '额定带宽 (Mbps)',
+    lbl_p_cost: '成本倍率',
+    btn_del: '删除',
+    diag_title: '切换配置合理性实时诊断',
+    log_title: '选路决策与防震荡拦截日志',
+    log_desc: '记录主路切换、容差/驻留期拦截、带宽溢出与被动熔断事件及新旧节点五维代价对比公式',
+    log_f_all: '全部',
+    log_f_switch: '主路切换',
+    log_f_suppressed: '拦截抑制',
+    log_f_overflow: '带宽溢出',
+    log_f_circuit: '被动熔断'
+  },
+  en: {
+    nav_proxies: 'Routes',
+    nav_analytics: 'Analytics',
+    nav_policies: 'Policies',
+    nav_logs: 'Audit Logs',
+    nav_yacd: 'Yacd Panel',
+    title_proxies: 'SmartRoute Proxy Groups',
+    title_analytics: 'Route Quality & Cost Analytics',
+    title_policies: 'Routing Policies & Metric Weights',
+    title_logs: 'Decision Logs & Config Assessment',
+    filter_placeholder: 'Filter node name / tier...',
+    kpi_active_title: 'Active / Selected Route',
+    kpi_sla_title: 'SLA Health Distribution',
+    kpi_cost_title: 'Best Composite Path Cost',
+    kpi_cost_tag: 'Composite',
+    kpi_bw_title: 'Live Throughput / Total Traffic',
+    mode_overflow: 'OVERFLOW',
+    mode_primary: 'PRIMARY',
+    stay_stable: 'Holding steady',
+    btn_policies: '⚙️ Policies & Weights',
+    btn_probe_all: '⚡ Probe Group',
+    chart_breakdown_title: 'Path Cost Breakdown',
+    chart_trend_title: 'Composite Cost Trajectory',
+    leg_rtt: 'Smoothed RTT',
+    leg_sla: 'Jitter/Loss/Penalty',
+    leg_bw: 'Bandwidth Cost',
+    leg_cost: 'Traffic Cost',
+    leg_pref: 'Route Preference',
+    cfg_sec_algo: 'SmartRoute Algorithm',
+    cfg_sec_algo_desc: 'Select the optimal routing algorithm for your network characteristics (Composite, UCB Robust, Sticky SLA, ITU MOS, or Lowest RTT)',
+    lbl_algorithm: 'Algorithm',
+    algo_composite: 'Weighted Composite Cost (Default)',
+    algo_lcb_robust: 'UCB Robust Anti-Jitter (For 100~1000ms Unstable Links)',
+    algo_sticky_sla: 'Strict SLA Sticky Lock (Never Switch Within SLA)',
+    algo_mos_itu: 'ITU-T G.107 E-Model MOS (Voice & Gaming 177ms Knee)',
+    algo_lowest_rtt: 'Pure Smoothed RTT Priority (Legacy)',
+    cfg_sec_hysteresis: 'Anti-Flapping & Hysteresis',
+    cfg_sec_hysteresis_desc: 'Non-fault route upgrades must exceed the hysteresis threshold and pass the minimum hold-down timer',
+    lbl_tolerance: 'Tolerance (Cost)',
+    lbl_hold_time: 'Hold Time (ms)',
+    lbl_fail_thresh: 'Circuit Failure Threshold',
+    cfg_sec_windows: 'Probing & Statistical Windows',
+    cfg_sec_windows_desc: 'Control active probe interval, EWMA sample window length, penalty decay half-life, and sliding bandwidth window',
+    lbl_interval_sec: 'Probe Interval (s)',
+    lbl_stat_window: 'Smoothing Window (Samples)',
+    lbl_penalty_hl: 'Penalty Half-Life (s)',
+    lbl_bw_window: 'Bandwidth Window (s)',
+    cfg_sec_sla: 'Tier SLA Spillover Gate',
+    cfg_sec_sla_desc: 'Automatically spill over to the next tier when smoothed RTT, loss rate, or bandwidth (≥95%) exceeds threshold',
+    lbl_max_latency: 'Max Latency (ms)',
+    lbl_max_loss: 'Max Loss Rate (%)',
+    cfg_sec_weights: 'Composite Metric Weights',
+    cfg_sec_weights_desc: 'Calculate composite path cost (lower is better): Smoothed RTT + Jitter Cost + Loss Cost + Bandwidth Cost + Traffic Cost + Preference',
+    lbl_jitter_w: 'Jitter Weight',
+    lbl_loss_w: 'Loss Weight',
+    lbl_bw_w: 'Bandwidth Weight',
+    lbl_cost_w: 'Cost Weight',
+    cfg_sec_policies: 'Route Preference, Bandwidth & Cost Policy Table',
+    cfg_sec_policies_desc: 'Match node tags by regex in order to assign priority tier, preference offset, max bandwidth, and cost multiplier',
+    btn_preset: '✨ Fill Preset Policies',
+    btn_add_rule: '+ Add Rule',
+    btn_save: '💾 Save & Apply',
+    lbl_p_match: 'Match Regex',
+    lbl_p_tier: 'Priority Tier',
+    lbl_p_pref: 'Preference (Cost)',
+    lbl_p_bw: 'Max Bandwidth (Mbps)',
+    lbl_p_cost: 'Cost Multiplier',
+    btn_del: 'Delete',
+    diag_title: 'Switching Configuration Assessment',
+    log_title: 'Decision & Hysteresis Audit Log',
+    log_desc: 'Audit trail of route switches, hysteresis/hold-time suppressions, bandwidth overflows, and circuit breaker trips',
+    log_f_all: 'All',
+    log_f_switch: 'Switches',
+    log_f_suppressed: 'Suppressed',
+    log_f_overflow: 'Overflow',
+    log_f_circuit: 'Circuit Breaker'
+  }
+};
+
+const TIPS = {
+  zh: {
+    tip_chart_breakdown: {
+      title: '选路综合代价构成说明',
+      desc: '展示每个节点的总代价由哪几部分叠加而成（总代价越低越优先）。',
+      formula: '总代价 = 平滑延迟 + 抖动代价 + 丢包代价 + 震荡惩罚 + 带宽拥塞代价 + 成本代价 + 线路偏好补贴',
+      tune: '若绿色段越长代表该线路享有越高负向代价补贴；橙色/蓝色段过长说明线路存在抖动丢包或带宽拥塞。'
+    },
+    tip_chart_trend: {
+      title: '线路综合代价实时轨迹说明',
+      desc: '按时间序列展示排名前 6 的线路综合代价波动情况，粗线代表当前承载主路。',
+      formula: '每 2 秒采样一次各节点实时选路综合代价',
+      tune: '若两条曲线频繁交叉且引发主路切换，建议调大“容差”或拉开两者的“偏好补贴”。'
+    },
+    tip_sec_algo: {
+      title: '选路决策核心算法',
+      desc: '支持 5 种工业级智能选路算法，可根据您的线路物理特性（专线/公网/全员剧烈波动/实时游戏）一键切换。',
+      formula: 'composite | lcb_robust | sticky_sla | mos_itu | lowest_rtt',
+      tune: '若所有线路均在 100~1000ms 剧烈波动，强烈推荐选择“置信上界抗波动法 (lcb_robust)”或“SLA 粘滞死锁法 (sticky_sla)”。'
+    },
+    tip_algorithm: {
+      title: '五大选路算法详解',
+      desc: '1. 多维加权综合代价法：五维线性加权 + 容差滞回；2. 置信上界抗波动法：按 P95 悲观尾延迟选路，并自动将双边抖动之和作为自适应防震荡门限；3. SLA 粘滞死锁法：只要当前主路满足 SLA 红线就死锁不切；4. ITU-T 实时交互法：按 177.3ms 语音拐点非线性惩罚；5. 极简延迟优先法：仅比较平滑延迟与偏好。',
+      formula: 'lcb_robust 滞回门限 = max(容差, 10%×当前代价, 1.25×(主路抖动 + 候选抖动))',
+      tune: '日常通用选“多维加权综合代价法”；全员晚高峰剧烈抖动选“置信上界抗波动法”；防 IP 变动选“SLA 粘滞死锁法”。'
+    },
+    tip_sec_hysteresis: {
+      title: '防震荡容差与驻留控制',
+      desc: '防止因网络微小的延迟波动导致主路在两条代价相近的节点之间频繁来回切换（乒乓效应）。',
+      formula: '切换条件：候选节点比当前节点代价低出 max(容差, 10%×当前代价) 且距上次切换已满驻留期',
+      tune: '可通过下方“决策日志”观察容差拦截与短驻留震荡次数来评估此项是否合理。'
+    },
+    tip_tolerance: {
+      title: '容差 (代价)',
+      desc: '同层级内非故障切换所需的最小综合代价优势。只有当候选节点比当前主路总代价低出该数值以上时才允许切换。',
+      formula: '有效滞回门限 = max(容差, 当前节点总代价 × 10%)',
+      tune: '推荐值：25 ~ 60。若日志频繁提示“短驻留震荡”，请调大此值；若长期提示“容差拦截”且希望更灵敏切往低延迟节点，可调小此值。'
+    },
+    tip_hold_time: {
+      title: '驻留期 (ms)',
+      desc: '主路发生切换后的最短稳定保持时间（毫秒）。在驻留期内，除非当前主路离线、熔断或违反 SLA，否则禁止再次切换。',
+      formula: '当前时间 - 上次切换时间 ≥ 驻留期',
+      tune: '推荐值：10000 ~ 30000 (10~30秒)。可有效过滤探测毛刺导致的瞬时回切。'
+    },
+    tip_fail_thresh: {
+      title: '熔断连续失败数',
+      desc: '被动业务流量建连连续失败多少次后触发快速熔断。单次失败（如目标网站自身关闭）不会误杀节点。',
+      formula: '连续建连失败次数 ≥ 熔断阈值 -> 立即标记节点熔断并毫秒级重连备路',
+      tune: '推荐值：3 ~ 5。若常访问不稳定的冷门小站导致误熔断，建议调高至 5 ~ 8。'
+    },
+    tip_sec_windows: {
+      title: '探测采样与统计平滑窗口',
+      desc: '决定系统采集链路质量样本的频率以及对历史样本的平滑记忆长度。窗口越小响应越快，窗口越大抗毛刺越强。',
+      formula: 'EWMA 平滑系数 α = 2 / (平滑窗口 + 1)；惩罚衰减 = 0.5 ^ (经过时间 / 半衰期)',
+      tune: '若网络偶发单次丢包或延迟跳变频繁，请适当调大“平滑窗口”与“带宽窗口”。'
+    },
+    tip_interval: {
+      title: '探测周期 (s)',
+      desc: '后台定时对组内所有节点发起 URL 测速探针的时间间隔（秒）。',
+      formula: '每满一个探测周期自动并发更新所有节点的 RTT、抖动与丢包率',
+      tune: '推荐值：15 ~ 60 秒。设得越短故障恢复感知越快，但会产生少量周期性探测请求。'
+    },
+    tip_stat_window: {
+      title: '质量平滑窗口 (采样次数)',
+      desc: '计算平滑延迟、抖动与丢包率的指数移动平均 (EWMA) 等效历史样本窗口大小。',
+      formula: 'α_RTT = 2/(N+1)，β_Jitter = 2/(N+2)，γ_Loss = 2/(N+4)（默认 N=6 次）',
+      tune: '推荐值：4 ~ 10 次（默认 6 次）。设为 1 代表完全不平滑（直接使用最新单次测速值）；设为 10~20 可强力过滤偶发毛刺。'
+    },
+    tip_penalty_hl: {
+      title: '惩罚衰减半衰期 (s)',
+      desc: '当节点发生探测超时 (+80 代价) 或被动建连熔断 (+120 代价) 后，其历史震荡惩罚分衰减一半所需的时间（秒）。',
+      formula: '当前惩罚分 = 初始惩罚分 × 0.5 ^ (经过秒数 / 半衰期)',
+      tune: '推荐值：30 ~ 120 秒（默认 60 秒）。调大此值会让曾断流的劣质节点被冷落更长时间。'
+    },
+    tip_bw_window: {
+      title: '带宽统计滑动窗口 (s)',
+      desc: '统计节点实时吞吐速率 (Mbps) 与计算带宽拥塞水位的时间滑动窗口（秒）。',
+      formula: '实时吞吐速率 = 窗口期内累计字节数 × 8 / 窗口秒数（支持 1 ~ 30 秒）',
+      tune: '推荐值：1 ~ 5 秒（默认 1 秒）。设为 1 秒可对瞬时满载秒级溢出；设为 3~10 秒可平滑短时突发流量，仅在持续跑满时溢出。'
+    },
+    tip_sec_sla: {
+      title: '分层溢出水位门限',
+      desc: '定义高优先级层级（如第 1 层级专线）的最低服务质量红线。只要第 1 层级有节点达标，绝不使用第 2 层级节点；一旦超限立即跨层级溢出。',
+      formula: '达标条件：平滑延迟 ≤ 最大延迟 且 丢包率 ≤ 最大丢包率 且 带宽水位 < 95%',
+      tune: '用于实现“平时锁定高优线路，高峰劣化或断网时自动降级到备用线路”。'
+    },
+    tip_max_latency: {
+      title: '最大延迟 (ms)',
+      desc: '节点满足 SLA 的平滑延迟上限。超过此延迟的节点将被标记为 SLA 降级，触发向下一层级溢出。',
+      formula: 'EWMA 平滑延迟 ≤ 最大延迟 (ms)',
+      tune: '推荐值：亚太线路 250 ~ 400ms，欧美跨洋线路 350 ~ 500ms。切勿设得过低导致全部节点不达标。'
+    },
+    tip_max_loss: {
+      title: '最大丢包率 (%)',
+      desc: '节点满足 SLA 的探测丢包率上限（百分比）。超过此丢包率将立即触发跨层级溢出。',
+      formula: 'EWMA 探测丢包率 (%) ≤ 最大丢包率 (%)',
+      tune: '推荐值：10% ~ 20%（默认 15%）。'
+    },
+    tip_sec_weights: {
+      title: '多维选路代价权重',
+      desc: '控制抖动、丢包、带宽负载和流量成本在综合选路代价中的话语权。',
+      formula: '综合代价 = 平滑RTT + 抖动×抖动权重 + 丢包率(%)×丢包权重 + 震荡惩罚 + 带宽代价 + (成本倍率-1)×成本权重 + 偏好补贴',
+      tune: '若语音/游戏优先，请调高抖动与丢包权重；若大流量下载优先，请调高带宽与成本权重。'
+    },
+    tip_jitter_w: {
+      title: '抖动权重 (代价 / 1ms 抖动)',
+      desc: '每 1 毫秒网络抖动（延迟波动幅度）折算增加的综合代价。',
+      formula: '抖动代价 = EWMA 抖动 (ms) × 抖动权重',
+      tune: '推荐值：1.5 ~ 4.0（默认 2.0，即 10ms 抖动相当于增加 20 点选路代价）。'
+    },
+    tip_loss_w: {
+      title: '丢包权重 (代价 / 1% 丢包)',
+      desc: '每 1% 探测丢包率折算增加的综合代价。',
+      formula: '丢包代价 = 丢包率 (%) × 丢包权重',
+      tune: '推荐值：3.0 ~ 10.0（默认 5.0，即 10% 丢包相当于增加 50 点选路代价）。'
+    },
+    tip_bw_w: {
+      title: '带宽权重 (水位 > 60% 拥塞系数)',
+      desc: '当节点实时吞吐量超过额定带宽 60% 时，按非线性曲线累加拥塞代价；达到 95% 时直接触发无损溢出分流。',
+      formula: '带宽代价 = 带宽权重 × ((水位 - 0.6) / (1 - 水位))',
+      tune: '推荐值：20 ~ 60（默认 40）。需配合下方策略表中的“额定带宽”使用。'
+    },
+    tip_cost_w: {
+      title: '成本权重 (代价 / +1x 成本倍率)',
+      desc: '将节点的流量成本倍率折算为选路代价。成本倍率 > 1.0 时增加代价，< 1.0 时扣减代价。',
+      formula: '成本代价 = (节点成本倍率 - 1.0) × 成本权重',
+      tune: '推荐值：15 ~ 50（默认 25，即 3.0x 昂贵线路会增加 50 点代价，优先使用便宜且质量尚可的线路）。'
+    },
+    tip_sec_policies: {
+      title: '线路正则策略表',
+      desc: '按从上到下的顺序匹配节点名称正则表达式（命中第一条即生效），为不同线路类型批量赋予属性。',
+      formula: '自上而下顺序匹配，建议最后保留一条 .* 作为兜底规则',
+      tune: '可点击右侧“填入典型线路预设”快速生成专线 / 精品网 / 普通直连三级策略模板。'
+    },
+    tip_p_match: {
+      title: '节点匹配正则',
+      desc: '匹配节点名称的正则表达式，支持 (?i) 忽略大小写。',
+      formula: '示例：(?i)(iplc|iepl|专线) 或 (?i)(cn2|9929)',
+      tune: '规则按从上往下顺序匹配，越精确的规则请放在越上面。'
+    },
+    tip_p_tier: {
+      title: '线路层级 (1 最高)',
+      desc: '硬优先级分层。数字越小优先级越高（1 级高于 2 级）。',
+      formula: '只要高优先级层级内有节点满足 SLA 门限，低层级节点即使延迟更低也不会被选中',
+      tune: '若希望所有节点同台竞争，请全部设为 1；若希望严格主备分层，可设为 1、2、3。'
+    },
+    tip_p_pref: {
+      title: '偏好补贴 (代价)',
+      desc: '直接加减在节点综合代价上的固定偏移量。负数代表奖励补贴（优先选中），正数代表附加惩罚。',
+      formula: '综合代价 += 偏好补贴',
+      tune: '推荐值：优质核心线路设为 -15 ~ -30，劣质/兜底线路设为 +10 ~ +30。'
+    },
+    tip_p_bw: {
+      title: '额定带宽 (Mbps)',
+      desc: '该类节点的带宽上限（Mbps）。设为 0 表示不限制带宽水位。',
+      formula: '水位 = 实时吞吐速率 / 额定带宽；水位 ≥ 95% 时新连接自动溢出至空闲备路且不中断旧连接',
+      tune: '请根据线路实际可用带宽填写（如 100、300、500 Mbps）。'
+    },
+    tip_p_cost: {
+      title: '成本倍率',
+      desc: '流量资费相对系数，1.0 为基准成本。',
+      formula: '成本代价 = (成本倍率 - 1.0) × 成本权重',
+      tune: '昂贵按量专线可设为 2.0 ~ 5.0，廉价大流量线路可设为 0.2 ~ 0.8。'
+    },
+    tip_diag: {
+      title: '切换配置合理性实时诊断',
+      desc: '系统自动统计历史切换频率、原主路驻留时长、容差拦截次数与熔断次数，诊断当前参数是否过严或过松。',
+      formula: '短驻留震荡判定：连续切换间隔 < 2 × 驻留期',
+      tune: '当状态显示为橙色提示或红色告警时，可直接参照卡片内的“评估建议”调整对应参数。'
+    }
+  },
+  en: {
+    tip_chart_breakdown: {
+      title: 'Path Cost Breakdown',
+      desc: 'Shows how each dimension contributes to the node composite routing cost (lower total cost wins).',
+      formula: 'Total Cost = Smoothed RTT + Jitter Cost + Loss Cost + Flap Penalty + Bandwidth Cost + Traffic Cost + Preference',
+      tune: 'Green bar indicates negative preference bonus; large orange/blue segments indicate SLA degradation or congestion.'
+    },
+    tip_chart_trend: {
+      title: 'Composite Cost Trajectory',
+      desc: 'Real-time composite cost trend of the top 6 routes. Bold line indicates the active primary route.',
+      formula: 'Sampled every 2 seconds',
+      tune: 'If two lines cross frequently and trigger route flapping, increase Tolerance or widen their Preference gap.'
+    },
+    tip_sec_algo: {
+      title: 'SmartRoute Algorithm',
+      desc: 'Choose among 5 industrial SmartRoute path selection models tailored to different link characteristics.',
+      formula: 'composite | lcb_robust | sticky_sla | mos_itu | lowest_rtt',
+      tune: 'Use "UCB Robust Anti-Jitter (lcb_robust)" when all routes fluctuate wildly (100~1000ms), or "Strict SLA Sticky Lock (sticky_sla)" to prevent IP changes.'
+    },
+    tip_algorithm: {
+      title: 'Algorithm Comparison',
+      desc: '1. Composite: 5D linear cost + hysteresis; 2. UCB Robust: P95 tail latency + bilateral jitter-envelope hysteresis; 3. Sticky SLA: locks current route as long as SLA is met; 4. ITU-T MOS: 177.3ms knee-point nonlinear model for VoIP/Gaming; 5. Lowest RTT: pure smoothed RTT + preference.',
+      formula: 'lcb_robust Hysteresis = max(Tolerance, 10%×Cost, 1.25×(Jitter_cur + Jitter_cand))',
+      tune: 'Default is Composite; switch to UCB Robust for noisy links or Sticky SLA for maximum session stability.'
+    },
+    tip_sec_hysteresis: {
+      title: 'Anti-Flapping & Hysteresis',
+      desc: 'Prevents route flapping (ping-pong switching) between nodes with similar scores during minor network fluctuations.',
+      formula: 'Switch requires: CostDelta ≥ max(Tolerance, 10% × CurrentCost) AND Elapsed ≥ HoldTime',
+      tune: 'Check the Audit Logs tab to see how many switches were suppressed by hysteresis or hold time.'
+    },
+    tip_tolerance: {
+      title: 'Tolerance (Cost)',
+      desc: 'Minimum composite cost advantage required for a non-fault switch within the same tier.',
+      formula: 'Effective Hysteresis = max(Tolerance, CurrentCost × 10%)',
+      tune: 'Recommended: 25 ~ 60. Increase if short-dwell flapping occurs; decrease if you want faster switching to lower-cost nodes.'
+    },
+    tip_hold_time: {
+      title: 'Hold Time (ms)',
+      desc: 'Minimum duration (in ms) a newly selected primary route must be held before another non-fault switch is allowed.',
+      formula: 'Now - LastSwitchTime ≥ HoldTime',
+      tune: 'Recommended: 10000 ~ 30000 (10~30s) to dampen transient latency spikes.'
+    },
+    tip_fail_thresh: {
+      title: 'Circuit Failure Threshold',
+      desc: 'Consecutive passive connection failures required before tripping the circuit breaker and failing over.',
+      formula: 'ConsecutivePassiveFailures ≥ Threshold -> Trip circuit breaker & fast-failover',
+      tune: 'Recommended: 3 ~ 5. Increase to 5 ~ 8 if unreachable target websites cause false failovers.'
+    },
+    tip_sec_windows: {
+      title: 'Probing & Statistical Windows',
+      desc: 'Controls how frequently link quality is sampled and the memory horizon of EWMA smoothing and bandwidth averaging.',
+      formula: 'EWMA α = 2 / (Window + 1); Penalty Decay = 0.5 ^ (Elapsed / HalfLife)',
+      tune: 'Smaller windows react faster to changes; larger windows filter out transient spikes and micro-bursts.'
+    },
+    tip_interval: {
+      title: 'Probe Interval (s)',
+      desc: 'Interval (in seconds) between active background URLTest health probes across all nodes in the group.',
+      formula: 'Periodically updates RTT, jitter, and probe loss rate every Interval seconds',
+      tune: 'Recommended: 15 ~ 60s. Shorter intervals detect link recovery faster.'
+    },
+    tip_stat_window: {
+      title: 'Smoothing Window (Samples)',
+      desc: 'Effective sample window size (N) for EWMA calculation of smoothed RTT, jitter, and packet loss.',
+      formula: 'α_RTT = 2/(N+1), β_Jitter = 2/(N+2), γ_Loss = 2/(N+4) (default N=6)',
+      tune: 'Recommended: 4 ~ 10 samples (default 6). Set to 1 for raw unsmoothed readings, or 10~20 for heavy spike damping.'
+    },
+    tip_penalty_hl: {
+      title: 'Penalty Half-Life (s)',
+      desc: 'Time window (in seconds) required for probe failure (+80) or circuit trip (+120) penalty scores to decay by 50%.',
+      formula: 'Penalty(t) = Penalty_0 × 0.5 ^ (ElapsedSec / HalfLifeSec)',
+      tune: 'Recommended: 30 ~ 120s (default 60s). Larger values keep flapping links penalized longer.'
+    },
+    tip_bw_window: {
+      title: 'Bandwidth Sliding Window (s)',
+      desc: 'Sliding time window (1 ~ 30 seconds) used to average real-time throughput and bandwidth utilization.',
+      formula: 'ThroughputBps = (WindowBytes × 8) / WindowSeconds',
+      tune: 'Recommended: 1 ~ 5s (default 1s). Increase to 3~10s to ignore short micro-bursts and only spill over on sustained load.'
+    },
+    tip_sec_sla: {
+      title: 'Tier SLA Spillover Gate',
+      desc: 'Hard quality boundary for higher-priority tiers. Lower tiers are only used when all nodes in higher tiers violate SLA.',
+      formula: 'Within SLA = SmoothedRTT ≤ MaxLatency AND LossRate ≤ MaxLoss AND Utilization < 95%',
+      tune: 'Ensures premium routes stay locked until they genuinely degrade.'
+    },
+    tip_max_latency: {
+      title: 'Max Latency (ms)',
+      desc: 'Maximum smoothed RTT allowed for a node to be considered within SLA.',
+      formula: 'SmoothedRTT ≤ MaxLatency (ms)',
+      tune: 'Recommended: 250 ~ 400ms for regional routes, 350 ~ 500ms for transoceanic routes.'
+    },
+    tip_max_loss: {
+      title: 'Max Loss Rate (%)',
+      desc: 'Maximum probe packet loss percentage allowed for a node to remain within SLA.',
+      formula: 'LossRate (%) ≤ MaxLoss (%)',
+      tune: 'Recommended: 10% ~ 20% (default 15%).'
+    },
+    tip_sec_weights: {
+      title: 'Composite Metric Weights',
+      desc: 'Controls how much jitter, packet loss, bandwidth utilization, and traffic cost influence the composite cost.',
+      formula: 'Cost = RTT + Jitter×W_jit + Loss(%)×W_loss + Penalty + BWCost + (Cost-1)×W_cost + Preference',
+      tune: 'Raise Jitter/Loss weights for real-time voice/gaming; raise Bandwidth/Cost weights for bulk throughput.'
+    },
+    tip_jitter_w: {
+      title: 'Jitter Weight (Cost per 1ms Jitter)',
+      desc: 'Composite cost added per 1ms of EWMA RTT jitter.',
+      formula: 'JitterCost = Jitter (ms) × JitterWeight',
+      tune: 'Recommended: 1.5 ~ 4.0 (default 2.0).'
+    },
+    tip_loss_w: {
+      title: 'Loss Weight (Cost per 1% Loss)',
+      desc: 'Composite cost added per 1% of EWMA probe packet loss.',
+      formula: 'LossCost = LossRate (%) × LossWeight',
+      tune: 'Recommended: 3.0 ~ 10.0 (default 5.0, meaning 10% loss adds 50 cost points).'
+    },
+    tip_bw_w: {
+      title: 'Bandwidth Weight (Congestion Factor >60%)',
+      desc: 'Non-linear penalty applied when throughput exceeds 60% of Max Bandwidth; spills over at 95%.',
+      formula: 'BWCost = BandwidthWeight × ((Util - 0.6) / (1 - Util))',
+      tune: 'Recommended: 20 ~ 60 (default 40). Requires Max Bandwidth > 0 in policy rules.'
+    },
+    tip_cost_w: {
+      title: 'Cost Weight (Cost per +1x Multiplier)',
+      desc: 'Converts traffic financial multiplier into routing cost.',
+      formula: 'TrafficCost = (CostMultiplier - 1.0) × CostWeight',
+      tune: 'Recommended: 15 ~ 50 (default 25).'
+    },
+    tip_sec_policies: {
+      title: 'Route Regex Policy Table',
+      desc: 'Evaluated top-to-bottom against node tags (first match wins) to assign tier, preference, bandwidth cap, and cost.',
+      formula: 'First matching regex rule applies; keep a catch-all .* rule at the bottom',
+      tune: 'Click "Fill Preset Policies" to load a typical 3-tier template.'
+    },
+    tip_p_match: {
+      title: 'Match Regex',
+      desc: 'Regular expression matched against outbound node tag (supports (?i) case-insensitive flag).',
+      formula: 'Example: (?i)(iplc|iepl) or (?i)(cn2|9929)',
+      tune: 'Place specific rules above general rules.'
+    },
+    tip_p_tier: {
+      title: 'Priority Tier (1 = Highest)',
+      desc: 'Hard priority tier. Smaller number means higher priority (Tier 1 > Tier 2).',
+      formula: 'Lower tiers are only selected when all higher-tier nodes violate SLA',
+      tune: 'Set all to 1 for flat scoring, or 1/2/3 for strict primary/backup hierarchy.'
+    },
+    tip_p_pref: {
+      title: 'Preference Offset (Cost)',
+      desc: 'Fixed cost offset added to the node score. Negative values favor the route; positive values penalize it.',
+      formula: 'CompositeCost += Preference',
+      tune: 'Recommended: -15 ~ -30 for preferred routes, +10 ~ +30 for backup routes.'
+    },
+    tip_p_bw: {
+      title: 'Max Bandwidth (Mbps)',
+      desc: 'Rated bandwidth capacity in Mbps (0 = unlimited).',
+      formula: 'At ≥95% utilization, new connections overflow to secondary routes without dropping existing connections',
+      tune: 'Set according to actual link capacity (e.g. 100, 300, 500 Mbps).'
+    },
+    tip_p_cost: {
+      title: 'Cost Multiplier',
+      desc: 'Relative traffic cost multiplier (1.0 = baseline).',
+      formula: 'TrafficCost = (CostMultiplier - 1.0) × CostWeight',
+      tune: 'Set 2.0 ~ 5.0 for expensive metered links, 0.2 ~ 0.8 for cheap unmetered links.'
+    },
+    tip_diag: {
+      title: 'Switching Configuration Assessment',
+      desc: 'Automatically analyzes switch frequency, route dwell time, hysteresis suppressions, and circuit breaker trips.',
+      formula: 'Flap detected when DwellTime < 2 × HoldTime',
+      tune: 'Follow the recommendation on any WARN/INFO card to fine-tune your parameters.'
+    }
+  }
+};
+
+function detectDefaultLang() {
+  const saved = localStorage.getItem('yacd.lang');
+  if (saved === 'zh' || saved === 'en') return saved;
+  const nav = (navigator.language || navigator.userLanguage || 'zh').toLowerCase();
+  return nav.startsWith('zh') ? 'zh' : 'en';
+}
+
+let state = {
+  lang: detectDefaultLang(),
+  groups: [],
+  selectedGroupTag: '',
+  currentView: 'proxies',
+  filterText: '',
+  logActionFilter: 'all',
+  historySeries: {},
+  policyDraftLoadedFor: ''
+};
+
+function t(key) {
+  const dict = I18N[state.lang] || I18N.zh;
+  return dict[key] || key;
+}
+
+function applyI18n() {
+  document.documentElement.setAttribute('lang', state.lang === 'zh' ? 'zh-CN' : 'en');
+  document.getElementById('langBtn').textContent = state.lang.toUpperCase();
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (k) el.textContent = t(k);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const k = el.getAttribute('data-i18n-placeholder');
+    if (k) el.setAttribute('placeholder', t(k));
+  });
+  const titles = {
+    proxies: t('title_proxies'),
+    analytics: t('title_analytics'),
+    policies: t('title_policies'),
+    logs: t('title_logs')
+  };
+  document.getElementById('pageTitle').textContent = titles[state.currentView] || 'SmartRoute';
+  const g = getCurrentGroup();
+  if (g) {
+    loadConfigForm(g);
+    renderAll(g);
+  } else {
+    updateAlgorithmParameterState();
+  }
+}
+
+// Sync theme with Yacd-meta localStorage key
+function initTheme() {
+  const saved = localStorage.getItem('yacd.theme') || 'auto';
+  document.documentElement.setAttribute('data-theme', saved);
+}
+initTheme();
+
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme') || 'auto';
+  const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('yacd.theme', next);
+  showToast((state.lang === 'zh' ? '主题已切换为: ' : 'Theme: ') + next.toUpperCase());
+});
+
+document.getElementById('langBtn').addEventListener('click', () => {
+  state.lang = state.lang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('yacd.lang', state.lang);
+  applyI18n();
+  showToast(state.lang === 'zh' ? '已切换为中文界面' : 'Switched to English');
+});
+
+// Interactive (?) Help Popover Logic
+const helpPopover = document.getElementById('helpPopover');
+function showHelpPopover(targetEl) {
+  const key = targetEl.getAttribute('data-tip-key');
+  const tipDict = TIPS[state.lang] || TIPS.zh;
+  const info = tipDict[key];
+  if (!info) return;
+  const lblDesc = state.lang === 'zh' ? '功能说明' : 'Description';
+  const lblFormula = state.lang === 'zh' ? '生效逻辑' : 'Formula / Logic';
+  const lblTune = state.lang === 'zh' ? '配置建议' : 'Tuning Tip';
+  helpPopover.innerHTML = `
+    <div class="tip-title">${info.title}</div>
+    <div class="tip-row"><b>${lblDesc}：</b>${info.desc}</div>
+    <div class="tip-row"><b>${lblFormula}：</b><code>${info.formula}</code></div>
+    <div class="tip-row"><b>${lblTune}：</b>${info.tune}</div>
+  `;
+  helpPopover.style.display = 'block';
+  const rect = targetEl.getBoundingClientRect();
+  const popW = helpPopover.offsetWidth || 320;
+  const popH = helpPopover.offsetHeight || 140;
+  let left = rect.left + rect.width / 2 - popW / 2;
+  let top = rect.bottom + 8;
+  if (left < 12) left = 12;
+  if (left + popW > window.innerWidth - 12) left = window.innerWidth - popW - 12;
+  if (top + popH > window.innerHeight - 12) top = Math.max(12, rect.top - popH - 8);
+  helpPopover.style.left = left + 'px';
+  helpPopover.style.top = top + 'px';
+}
+
+document.addEventListener('mouseover', (e) => {
+  const tipEl = e.target.closest('.help-tip');
+  if (tipEl) showHelpPopover(tipEl);
+});
+document.addEventListener('mouseout', (e) => {
+  const tipEl = e.target.closest('.help-tip');
+  if (tipEl) helpPopover.style.display = 'none';
+});
+document.addEventListener('click', (e) => {
+  const tipEl = e.target.closest('.help-tip');
+  if (tipEl) {
+    e.preventDefault();
+    e.stopPropagation();
+    showHelpPopover(tipEl);
+  } else {
+    helpPopover.style.display = 'none';
+  }
+});
+
+const secretInput = document.getElementById('secretInput');
+secretInput.value = localStorage.getItem('singbox_smartroute_secret') || '';
+secretInput.addEventListener('change', () => {
+  localStorage.setItem('singbox_smartroute_secret', secretInput.value.trim());
+  fetchOverview();
+});
+
+document.getElementById('filterInput').addEventListener('input', (e) => {
+  state.filterText = e.target.value.trim().toLowerCase();
+  const g = getCurrentGroup();
+  if (g) renderAll(g);
+});
+
+function switchView(view) {
+  state.currentView = view;
+  document.querySelectorAll('.sb-row[data-view]').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-view') === view);
+  });
+  const titles = {
+    proxies: t('title_proxies'),
+    analytics: t('title_analytics'),
+    policies: t('title_policies'),
+    logs: t('title_logs')
+  };
+  document.getElementById('pageTitle').textContent = titles[view] || 'SmartRoute';
+
+  document.getElementById('viewProxies').style.display = (view === 'proxies') ? 'block' : 'none';
+  document.getElementById('viewAnalytics').style.display = (view === 'proxies' || view === 'analytics') ? 'block' : 'none';
+  document.getElementById('viewPolicies').style.display = (view === 'policies') ? 'block' : 'none';
+  document.getElementById('viewLogs').style.display = (view === 'proxies' || view === 'logs') ? 'block' : 'none';
+
+  const g = getCurrentGroup();
+  if (g) {
+    if (view === 'policies') loadConfigForm(g);
+    renderAll(g);
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 2600);
+}
+
+async function apiFetch(path, options = {}) {
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+  const secret = secretInput.value.trim();
+  if (secret) headers['Authorization'] = 'Bearer ' + secret;
+  const resp = await fetch(path, Object.assign({}, options, { headers }));
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(txt || ('HTTP ' + resp.status));
+  }
+  if (resp.status === 204) return null;
+  return resp.json();
+}
+
+function latencyColor(ms, healthy) {
+  if (!healthy || !ms || ms <= 0) return '#909399';
+  if (ms < 100) return '#67c23a';
+  if (ms < 220) return '#e6a23c';
+  return '#f56c6c';
+}
+
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0, v = bytes;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return v.toFixed(i > 1 ? 2 : 0) + ' ' + units[i];
+}
+
+function formatMbps(bps) {
+  if (!bps || bps <= 0) return '0.00 Mbps';
+  return (bps / 1e6).toFixed(2) + ' Mbps';
+}
+
+function getCurrentGroup() {
+  return state.groups.find(g => g.tag === state.selectedGroupTag) || state.groups[0];
+}
+
+async function fetchOverview() {
+  try {
+    const data = await apiFetch('/smartroute/api/overview');
+    if (data.version) {
+      document.getElementById('versionTag').textContent = 'v' + data.version;
+    }
+    state.groups = data.groups || [];
+    renderGroupTabs();
+    const g = getCurrentGroup();
+    if (g) {
+      recordTimeSeries(g);
+      if (state.policyDraftLoadedFor !== g.tag) {
+        loadConfigForm(g);
+        state.policyDraftLoadedFor = g.tag;
+      }
+      renderAll(g);
+    }
+  } catch (err) {
+    showToast('API 连接失败: ' + err.message);
+  }
+}
+
+function renderGroupTabs() {
+  const container = document.getElementById('groupTabs');
+  if (state.groups.length === 0) {
+    container.innerHTML = '<div class="yacd-tab active">无 URLTest 组</div>';
+    return;
+  }
+  if (!state.selectedGroupTag || !state.groups.some(g => g.tag === state.selectedGroupTag)) {
+    state.selectedGroupTag = state.groups[0].tag;
+  }
+  container.innerHTML = state.groups.map(g => `
+    <div class="yacd-tab ${g.tag === state.selectedGroupTag ? 'active' : ''}" onclick="selectGroupTab('${g.tag}')">
+      <span>${g.tag}</span>
+      <span class="yacd-tab-count">${g.nodes.length}</span>
+    </div>
+  `).join('');
+}
+
+function selectGroupTab(tag) {
+  state.selectedGroupTag = tag;
+  renderGroupTabs();
+  const g = getCurrentGroup();
+  if (g) {
+    loadConfigForm(g);
+    state.policyDraftLoadedFor = g.tag;
+    renderAll(g);
+  }
+}
+
+function recordTimeSeries(group) {
+  if (!state.historySeries[group.tag]) {
+    state.historySeries[group.tag] = { nodes: {} };
+  }
+  const s = state.historySeries[group.tag];
+  for (const n of group.nodes) {
+    if (!s.nodes[n.tag]) s.nodes[n.tag] = [];
+    s.nodes[n.tag].push(n.healthy ? Number(n.effective_score.toFixed(1)) : null);
+    if (s.nodes[n.tag].length > 50) s.nodes[n.tag].shift();
+  }
+}
+
+function renderAll(group) {
+  const isZh = state.lang === 'zh';
+  // 1. KPI Summary
+  document.getElementById('kpiActiveNode').textContent = group.active_tcp || group.selected_tcp || '-';
+  const modeBadge = document.getElementById('kpiModeBadge');
+  if (group.overflowing) {
+    modeBadge.textContent = t('mode_overflow');
+    modeBadge.style.color = '#e6a23c';
+  } else {
+    modeBadge.textContent = t('mode_primary');
+    modeBadge.style.color = 'var(--color-focus-blue)';
+  }
+  const switchTime = group.last_switch_at && !group.last_switch_at.startsWith('0001')
+    ? new Date(group.last_switch_at).toLocaleTimeString()
+    : t('stay_stable');
+  document.getElementById('kpiSwitchInfo').textContent = isZh
+    ? `主选: ${group.selected_tcp || '-'} · 容差 ${group.config.tolerance} · 切换于 ${switchTime}`
+    : `Selected: ${group.selected_tcp || '-'} · Tol ${group.config.tolerance} · Switched ${switchTime}`;
+
+  let okCount = 0, warnCount = 0, downCount = 0;
+  let totalBps = 0, peakBps = 0, totalBytes = 0;
+  let bestNode = null;
+
+  for (const n of group.nodes) {
+    totalBps += (n.throughput_bps || 0);
+    if ((n.peak_throughput_bps || 0) > peakBps) peakBps = n.peak_throughput_bps;
+    totalBytes += (n.total_bytes || 0);
+    if (!n.healthy || n.circuit_open) downCount++;
+    else if (!n.within_sla || n.congested) warnCount++;
+    else okCount++;
+
+    if (n.healthy && (!bestNode || n.effective_score < bestNode.effective_score)) {
+      bestNode = n;
+    }
+  }
+
+  const totalNodes = Math.max(1, group.nodes.length);
+  const availPct = Math.round(((okCount + warnCount) / totalNodes) * 100);
+  document.getElementById('kpiAvailPct').textContent = availPct + (isZh ? '% 可用' : '% Up');
+  document.getElementById('kpiHealthMatrix').innerHTML =
+    `<span style="color:#67c23a">${okCount}</span> / <span style="color:#e6a23c">${warnCount}</span> / <span style="color:#f56c6c">${downCount}</span>`;
+  document.getElementById('kpiHealthSub').textContent = isZh
+    ? `门限: ≤${group.config.max_latency}ms · 丢包 ≤${(group.config.max_loss * 100).toFixed(0)}%`
+    : `Gate: ≤${group.config.max_latency}ms · Loss ≤${(group.config.max_loss * 100).toFixed(0)}%`;
+
+  if (bestNode) {
+    document.getElementById('kpiBestScore').innerHTML =
+      `${bestNode.effective_score.toFixed(1)} <small style="font-size:13px;color:var(--color-text-secondary)">(${bestNode.tag})</small>`;
+    document.getElementById('kpiBestScoreSub').textContent = isZh
+      ? `平滑延迟 ${bestNode.smoothed_rtt.toFixed(0)}ms · 抖动 ±${bestNode.jitter.toFixed(1)}ms · 偏好 ${bestNode.preference >= 0 ? '+' : ''}${bestNode.preference}`
+      : `RTT ${bestNode.smoothed_rtt.toFixed(0)}ms · Jitter ±${bestNode.jitter.toFixed(1)}ms · Pref ${bestNode.preference >= 0 ? '+' : ''}${bestNode.preference}`;
+  } else {
+    document.getElementById('kpiBestScore').textContent = '-';
+  }
+
+  document.getElementById('kpiThroughput').textContent = formatMbps(totalBps);
+  document.getElementById('kpiPeakBw').textContent = (isZh ? '峰值 ' : 'Peak ') + formatMbps(peakBps);
+  document.getElementById('kpiTotalTraffic').textContent = (isZh ? '累计经过流量: ' : 'Total Traffic: ') + formatBytes(totalBytes);
+
+  // 2. Group Header & Availability Bar
+  document.getElementById('groupHeaderName').textContent = group.tag;
+  document.getElementById('groupNowTag').textContent = group.active_tcp || group.selected_tcp || '-';
+  document.getElementById('availBarOk').style.width = ((okCount / totalNodes) * 100).toFixed(1) + '%';
+  document.getElementById('availBarWarn').style.width = ((warnCount / totalNodes) * 100).toFixed(1) + '%';
+  document.getElementById('availSummaryText').textContent = `${okCount + warnCount}/${group.nodes.length}`;
+
+  // Sort & filter nodes
+  const sortedNodes = [...group.nodes].sort((a, b) => {
+    if (a.healthy !== b.healthy) return a.healthy ? -1 : 1;
+    if (a.tier !== b.tier) return a.tier - b.tier;
+    return a.effective_score - b.effective_score;
+  });
+
+  // Render Yacd Summary Dots
+  document.getElementById('proxyDotsRow').innerHTML = sortedNodes.map(n => {
+    const color = latencyColor(n.effective_score, n.healthy);
+    return `<div class="proxy-small-dot ${n.active_tcp ? 'now' : ''}" style="background-color:${color}" title="${n.tag}: ${n.healthy ? n.smoothed_rtt.toFixed(0) + 'ms | ' + n.effective_score.toFixed(1) : (isZh ? '不可用' : 'Down')}" onclick="probeSingleNode('${encodeURIComponent(n.tag)}')"></div>`;
+  }).join('');
+
+  const filteredNodes = sortedNodes.filter(n => {
+    if (!state.filterText) return true;
+    return n.tag.toLowerCase().includes(state.filterText) ||
+           n.type.toLowerCase().includes(state.filterText) ||
+           ('t' + n.tier).includes(state.filterText) ||
+           ('tier ' + n.tier).includes(state.filterText);
+  });
+
+  // 3. Render Yacd Proxy Cards
+  document.getElementById('proxyCardsGrid').innerHTML = filteredNodes.map(n => {
+    const isNow = n.active_tcp || n.selected_tcp;
+    const isErr = !n.healthy || n.circuit_open;
+    const color = latencyColor(n.smoothed_rtt, n.healthy);
+    const utilPct = Math.min(100, (n.utilization || 0) * 100);
+    const bwBarColor = utilPct >= 95 ? '#f56c6c' : (utilPct >= 60 ? '#e6a23c' : '#3b82f6');
+
+    let stateText = isZh ? '质量达标' : 'SLA OK';
+    if (n.circuit_open) stateText = isZh ? '熔断中' : 'Circuit Open';
+    else if (!n.healthy) stateText = isZh ? '离线' : 'Offline';
+    else if (n.active_tcp && !n.selected_tcp) stateText = isZh ? '溢出承载' : 'Overflow';
+    else if (n.congested) stateText = isZh ? '带宽满载' : 'Congested';
+    else if (!n.within_sla) stateText = isZh ? '质量降级' : 'Degraded';
+
+    return `<div class="proxy-card ${isNow ? 'now' : ''} ${isErr ? 'error' : ''}">
+      <div class="proxy-name-row">
+        <div class="proxy-name" title="${n.tag}">${n.tag}</div>
+        <span class="proxy-tier-badge">T${n.tier} · ${n.cost.toFixed(1)}x</span>
+      </div>
+
+      <div class="proxy-smartroute-metrics">
+        <div>${isZh ? '延迟' : 'RTT'}: <b>${n.healthy ? n.smoothed_rtt.toFixed(0) + 'ms' : '-'}</b> ±${n.jitter.toFixed(0)}</div>
+        <div>${isZh ? '丢包' : 'Loss'}: <b>${(n.loss_rate * 100).toFixed(0)}%</b> (+${n.penalty.toFixed(0)})</div>
+        <div>${isZh ? '代价' : 'Cost'}: <b>${n.healthy ? n.effective_score.toFixed(1) : '-'}</b> (${n.preference >= 0 ? '+' : ''}${n.preference})</div>
+        <div>${isZh ? '吞吐' : 'Rate'}: <b>${(n.throughput_bps / 1e6).toFixed(1)}M</b></div>
+        <div style="grid-column: 1 / -1;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;">
+            <span>${formatBytes(n.total_bytes)}</span>
+            <span>${n.max_bandwidth_mbps > 0 ? utilPct.toFixed(0) + (isZh ? '% 水位' : '% Load') : stateText}</span>
+          </div>
+          <div class="proxy-bw-track"><div class="proxy-bw-fill" style="width:${utilPct}%;background:${bwBarColor}"></div></div>
+        </div>
+      </div>
+
+      <div class="proxy-bottom-row">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="proxy-type">${n.type}</span>
+          <span class="udp-type">${stateText}</span>
+          ${(n.penalty > 0 || n.circuit_open) ? `<span style="cursor:pointer;font-size:11px;color:var(--color-focus-blue)" title="${isZh ? '重置惩罚分与熔断器' : 'Reset penalty & circuit breaker'}" onclick="resetSingleNode('${encodeURIComponent(n.tag)}')">↺${isZh ? '重置' : 'Reset'}</span>` : ''}
+        </div>
+        <button class="proxy-latency" style="color:${color}" title="${isZh ? `点击单独测速 (平滑延迟: ${n.smoothed_rtt.toFixed(0)}ms | 选路综合代价: ${n.effective_score.toFixed(1)})` : `Click to probe (RTT: ${n.smoothed_rtt.toFixed(0)}ms | Cost: ${n.effective_score.toFixed(1)})`}" onclick="probeSingleNode('${encodeURIComponent(n.tag)}')">
+          ${n.healthy ? `${n.smoothed_rtt.toFixed(0)} ms` : (isZh ? '测速' : 'Probe')}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 4. Render 4D Breakdown Bars, Trend Canvas & Decision Logs
+  renderBreakdown(sortedNodes);
+  renderTrendCanvas(group, sortedNodes);
+  renderDiagnosticsAndLogs(group);
+}
+
+function setLogFilter(action) {
+  state.logActionFilter = action;
+  const g = getCurrentGroup();
+  if (g) renderDiagnosticsAndLogs(g);
+}
+
+function renderDiagnosticsAndLogs(group) {
+  const isZh = state.lang === 'zh';
+  const diag = group.diagnostics || {};
+  const badgesEl = document.getElementById('diagStatsBadges');
+  if (badgesEl) {
+    badgesEl.innerHTML = isZh ? `
+      <span>累计切换: <b>${diag.total_switches || 0}</b></span>
+      <span>短驻留震荡: <b style="color:${(diag.flap_switches || 0) > 0 ? '#f56c6c' : '#67c23a'}">${diag.flap_switches || 0}</b></span>
+      <span>容差拦截: <b style="color:#3b82f6">${diag.suppressed_hysteresis || 0}</b></span>
+      <span>驻留期拦截: <b style="color:#e6a23c">${diag.suppressed_hold_time || 0}</b></span>
+      <span>平均驻留: <b>${diag.avg_dwell_seconds ? diag.avg_dwell_seconds.toFixed(1) + 's' : '-'}</b></span>
+    ` : `
+      <span>Switches: <b>${diag.total_switches || 0}</b></span>
+      <span>Flaps: <b style="color:${(diag.flap_switches || 0) > 0 ? '#f56c6c' : '#67c23a'}">${diag.flap_switches || 0}</b></span>
+      <span>Tol Suppressed: <b style="color:#3b82f6">${diag.suppressed_hysteresis || 0}</b></span>
+      <span>Hold Suppressed: <b style="color:#e6a23c">${diag.suppressed_hold_time || 0}</b></span>
+      <span>Avg Dwell: <b>${diag.avg_dwell_seconds ? diag.avg_dwell_seconds.toFixed(1) + 's' : '-'}</b></span>
+    `;
+  }
+
+  const assessGrid = document.getElementById('assessmentCardsGrid');
+  if (assessGrid) {
+    const assessments = diag.assessments || [];
+    assessGrid.innerHTML = assessments.map(a => {
+      const badgeColor = a.status === 'warn' ? '#f56c6c' : (a.status === 'info' ? '#e6a23c' : '#67c23a');
+      const badgeLabel = isZh
+        ? (a.status === 'warn' ? '需调优' : (a.status === 'info' ? '提示' : '合理'))
+        : (a.status === 'warn' ? 'WARN' : (a.status === 'info' ? 'INFO' : 'OK'));
+      return `<div class="yacd-card" style="background:var(--bg-near-transparent);border:1px solid var(--color-separator);padding:12px 14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-weight:600;font-size:13px;color:var(--color-text-highlight)">${a.parameter}</span>
+          <span style="font-family:var(--font-mono);font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid ${badgeColor};color:${badgeColor}">${badgeLabel}</span>
+        </div>
+        <div style="font-size:12px;color:var(--color-text);margin-bottom:4px;">📊 <b>${isZh ? '观测依据' : 'Finding'}</b>：${a.finding}</div>
+        <div style="font-size:11.5px;color:var(--color-text-secondary);">💡 <b>${isZh ? '评估建议' : 'Advice'}</b>：${a.recommendation}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const logContainer = document.getElementById('decisionLogsContainer');
+  if (!logContainer) return;
+  const events = (group.events || []).filter(ev => state.logActionFilter === 'all' || ev.action === state.logActionFilter);
+  if (events.length === 0) {
+    logContainer.innerHTML = `<div class="yacd-list-item" style="color:var(--color-text-secondary);font-size:12.5px;">${isZh ? '暂无匹配的选路决策日志' : 'No matching decision logs'}</div>`;
+    return;
+  }
+
+  const actionMeta = isZh ? {
+    switch: { label: '主路切换', color: '#3b82f6' },
+    suppressed: { label: '防震荡拦截', color: '#e6a23c' },
+    overflow: { label: '带宽溢出', color: '#a78bfa' },
+    circuit_breaker: { label: '被动熔断', color: '#f56c6c' },
+    config_update: { label: '策略变更', color: '#67c23a' }
+  } : {
+    switch: { label: 'SWITCH', color: '#3b82f6' },
+    suppressed: { label: 'SUPPRESSED', color: '#e6a23c' },
+    overflow: { label: 'OVERFLOW', color: '#a78bfa' },
+    circuit_breaker: { label: 'CIRCUIT', color: '#f56c6c' },
+    config_update: { label: 'CONFIG', color: '#67c23a' }
+  };
+
+  logContainer.innerHTML = events.slice(0, 40).map(ev => {
+    const meta = actionMeta[ev.action] || { label: ev.action, color: '#9ca3af' };
+    const ts = ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : '-';
+    return `<div class="yacd-list-item" style="flex-direction:column;align-items:flex-start;gap:5px;padding:10px 18px;">
+      <div style="display:flex;align-items:center;gap:10px;width:100%;justify-content:space-between;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--color-text-secondary)">${ts}</span>
+          <span style="font-family:var(--font-mono);font-size:10.5px;padding:1px 7px;border-radius:4px;border:1px solid ${meta.color};color:${meta.color};font-weight:600">${meta.label}</span>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary)">[${ev.reason}]</span>
+          <span style="font-size:13px;font-weight:500;color:var(--color-text-highlight)">${ev.summary}</span>
+        </div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);background:var(--bg-near-transparent);padding:4px 8px;border-radius:6px;width:100%;overflow-x:auto;">
+        ${ev.detail}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderBreakdown(sortedNodes) {
+  const maxScore = Math.max(150, ...sortedNodes.filter(n => n.healthy).map(n => n.effective_score * 1.15));
+  document.getElementById('scoreBreakdownList').innerHTML = sortedNodes.map(n => {
+    if (!n.healthy) {
+      return `<div class="breakdown-item">
+        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.6">[T${n.tier}] ${n.tag}</div>
+        <div class="breakdown-bar"><div class="breakdown-seg" style="width:100%;background:rgba(245,108,108,0.2)"></div></div>
+        <div style="font-family:var(--font-mono);font-size:12px;text-align:right;color:#f56c6c">${n.circuit_open ? '熔断' : '离线'}</div>
+      </div>`;
+    }
+    const base = Math.max(0, n.smoothed_rtt);
+    const slaExtra = Math.max(0, n.sla_rtt - base);
+    const bwPen = Math.max(0, n.bandwidth_penalty);
+    const costPen = Math.max(0, n.cost_penalty);
+    const prefBonus = n.preference < 0 ? Math.abs(n.preference) : 0;
+
+    const wBase = Math.min(100, (base / maxScore) * 100);
+    const wSla = Math.min(100 - wBase, (slaExtra / maxScore) * 100);
+    const wBw = Math.min(100 - wBase - wSla, (bwPen / maxScore) * 100);
+    const wCost = Math.min(100 - wBase - wSla - wBw, (costPen / maxScore) * 100);
+    const wPref = Math.min(25, (prefBonus / maxScore) * 100);
+
+    return `<div class="breakdown-item">
+      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${n.active_tcp ? '700' : '400'};color:${n.active_tcp ? 'var(--color-focus-blue)' : 'inherit'}" title="${n.tag}">
+        [T${n.tier}] ${n.tag}
+      </div>
+      <div class="breakdown-bar" title="平滑RTT: ${base.toFixed(1)}ms | 抖动/丢包/惩罚代价: +${slaExtra.toFixed(1)} | 带宽代价: +${bwPen.toFixed(1)} | 成本代价: ${n.cost_penalty.toFixed(1)} | 偏好补贴: ${n.preference}">
+        <div class="breakdown-seg" style="width:${wBase}%;background:#3b82f6"></div>
+        <div class="breakdown-seg" style="width:${wSla}%;background:#e6a23c"></div>
+        <div class="breakdown-seg" style="width:${wBw}%;background:#51a8dd"></div>
+        <div class="breakdown-seg" style="width:${wCost}%;background:#f596aa"></div>
+        ${wPref > 0 ? `<div class="breakdown-seg" style="width:${wPref}%;background:#67c23a"></div>` : ''}
+      </div>
+      <div style="font-family:var(--font-mono);font-size:12px;text-align:right;font-weight:600;color:${latencyColor(n.effective_score, true)}">
+        ${n.effective_score.toFixed(1)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTrendCanvas(group, sortedNodes) {
+  const canvas = document.getElementById('trendCanvas');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const seriesObj = state.historySeries[group.tag];
+  if (!seriesObj) return;
+
+  const topNodes = sortedNodes.slice(0, 6);
+  document.getElementById('trendLegend').innerHTML = topNodes.map((n, i) =>
+    `<span><i class="legend-dot" style="background:${CHART_COLORS[i % CHART_COLORS.length]}"></i>${n.tag}</span>`
+  ).join('');
+
+  let maxVal = 120;
+  for (const n of topNodes) {
+    const arr = seriesObj.nodes[n.tag] || [];
+    for (const v of arr) {
+      if (v !== null && v > maxVal) maxVal = v * 1.15;
+    }
+  }
+
+  const padL = 42, padR = 14, padT = 14, padB = 22;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+
+  const style = getComputedStyle(document.documentElement);
+  ctx.strokeStyle = style.getPropertyValue('--color-separator').trim() || '#374151';
+  ctx.fillStyle = style.getPropertyValue('--color-text-secondary').trim() || '#9ca3af';
+  ctx.lineWidth = 1;
+  ctx.font = '11px monospace';
+
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + (plotH * i) / 4;
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+    ctx.fillText(String(Math.round(maxVal * (1 - i / 4))), 6, y + 4);
+  }
+
+  topNodes.forEach((n, idx) => {
+    const pts = seriesObj.nodes[n.tag] || [];
+    if (!pts.length) return;
+    ctx.strokeStyle = CHART_COLORS[idx % CHART_COLORS.length];
+    ctx.lineWidth = n.active_tcp ? 2.6 : 1.6;
+    ctx.beginPath();
+    let started = false;
+    pts.forEach((val, i) => {
+      if (val === null) { started = false; return; }
+      const x = padL + (pts.length === 1 ? plotW : (i / Math.max(10, pts.length - 1)) * plotW);
+      const y = padT + plotH - Math.min(1, val / maxVal) * plotH;
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+}
+
+async function probeCurrentGroup() {
+  const g = getCurrentGroup();
+  if (!g) return;
+  const fab = document.getElementById('fabProbeBtn');
+  fab.classList.add('spinning');
+  try {
+    showToast(`正在探测 ${g.tag} 组内所有线路...`);
+    await apiFetch(`/smartroute/api/groups/${encodeURIComponent(g.tag)}/probe`, { method: 'POST' });
+    showToast('全组测速完成');
+    await fetchOverview();
+  } catch (err) {
+    showToast('全组测速失败: ' + err.message);
+  } finally {
+    fab.classList.remove('spinning');
+  }
+}
+
+async function probeSingleNode(encodedTag) {
+  try {
+    showToast(`正在测速 ${decodeURIComponent(encodedTag)}...`);
+    const res = await apiFetch(`/smartroute/api/nodes/${encodedTag}/probe`, { method: 'POST' });
+    showToast(`${decodeURIComponent(encodedTag)} 平滑延迟: ${res.delay} ms`);
+    fetchOverview();
+  } catch (err) {
+    showToast('测速失败: ' + err.message);
+  }
+}
+
+async function resetSingleNode(encodedTag) {
+  try {
+    await apiFetch(`/smartroute/api/nodes/${encodedTag}/reset`, { method: 'POST' });
+    showToast(`已重置 ${decodeURIComponent(encodedTag)} 的熔断与惩罚状态`);
+    fetchOverview();
+  } catch (err) {
+    showToast('重置失败: ' + err.message);
+  }
+}
+
+// Policy Configuration View
+const policyContainer = document.getElementById('policyRowsContainer');
+
+function addPolicyItemRow(p = { match: '.*', tier: 1, preference: 0, max_bandwidth_mbps: 0, cost: 1.0 }) {
+  const item = document.createElement('div');
+  item.className = 'yacd-list-item policy-item';
+  item.innerHTML = `
+    <div class="policy-grid-row">
+      <label style="font-size:11px;color:var(--color-text-secondary)">
+        <span>${t('lbl_p_match')}</span><span class="help-tip" data-tip-key="tip_p_match">?</span>
+        <input type="text" class="yacd-input p-match" style="width:100%;margin-top:4px" value="${p.match || ''}" placeholder="(?i)(iplc|cn2)" />
+      </label>
+      <label style="font-size:11px;color:var(--color-text-secondary)">
+        <span>${t('lbl_p_tier')}</span><span class="help-tip" data-tip-key="tip_p_tier">?</span>
+        <input type="number" class="yacd-input p-tier" style="width:100%;margin-top:4px" value="${p.tier || 1}" min="1" />
+      </label>
+      <label style="font-size:11px;color:var(--color-text-secondary)">
+        <span>${t('lbl_p_pref')}</span><span class="help-tip" data-tip-key="tip_p_pref">?</span>
+        <input type="number" class="yacd-input p-pref" style="width:100%;margin-top:4px" value="${p.preference || 0}" step="5" />
+      </label>
+      <label style="font-size:11px;color:var(--color-text-secondary)">
+        <span>${t('lbl_p_bw')}</span><span class="help-tip" data-tip-key="tip_p_bw">?</span>
+        <input type="number" class="yacd-input p-bw" style="width:100%;margin-top:4px" value="${p.max_bandwidth_mbps || 0}" min="0" step="10" />
+      </label>
+      <label style="font-size:11px;color:var(--color-text-secondary)">
+        <span>${t('lbl_p_cost')}</span><span class="help-tip" data-tip-key="tip_p_cost">?</span>
+        <input type="number" class="yacd-input p-cost" style="width:100%;margin-top:4px" value="${p.cost || 1.0}" min="0.05" step="0.1" />
+      </label>
+      <div style="padding-top:16px">
+        <button class="yacd-btn" onclick="this.closest('.policy-item').remove()">${t('btn_del')}</button>
+      </div>
+    </div>
+  `;
+  policyContainer.appendChild(item);
+}
+
+function updateAlgorithmParameterState() {
+  const algo = document.getElementById('cfgAlgorithm').value || 'composite';
+  const isZh = state.lang === 'zh';
+  const tolInput = document.getElementById('cfgTolerance');
+  const jitInput = document.getElementById('cfgJitterWeight');
+  const costInput = document.getElementById('cfgCostWeight');
+  const hintEl = document.getElementById('algoActiveHint');
+
+  const setFieldActive = (inputEl, active, reasonZh, reasonEn) => {
+    const labelEl = inputEl.closest('label');
+    inputEl.disabled = !active;
+    if (labelEl) {
+      labelEl.style.opacity = active ? '1' : '0.42';
+      labelEl.title = active ? '' : (isZh ? reasonZh : reasonEn);
+    }
+  };
+
+  setFieldActive(tolInput, algo !== 'sticky_sla', 'SLA 粘滞死锁法在主路达标时死锁不切，不使用同级容差', 'Sticky SLA locks current route while within SLA; Tolerance is not used');
+  setFieldActive(jitInput, algo !== 'lowest_rtt', '经典极简延迟优先法不计入抖动权重', 'Lowest RTT mode ignores Jitter Weight');
+  setFieldActive(costInput, algo !== 'lowest_rtt', '经典极简延迟优先法不计入流量成本权重', 'Lowest RTT mode ignores Cost Weight');
+
+  const hints = isZh ? {
+    composite: '生效参数：全参数生效（平滑RTT + 抖动权重 + 丢包权重 + 带宽权重 + 成本权重 + 偏好 + 容差滞回）',
+    lcb_robust: '生效参数：全参数生效，且滞回门限自动取 max(容差, 10%×代价, 1.25×双边抖动包络)，无需手动调大容差',
+    sticky_sla: '生效参数：SLA 溢出门限 + 驻留期 + 备路选路权重生效；【容差】已禁用（主路达标期间死锁不切）',
+    mos_itu: '生效参数：全参数生效（抖动与丢包按 ITU-T G.107 177.3ms 语音拐点非线性公式折算）',
+    lowest_rtt: '生效参数：仅平滑延迟、丢包惩罚、带宽溢出与线路偏好生效；【抖动权重】与【成本权重】已禁用'
+  } : {
+    composite: 'Active: All parameters (RTT + Jitter + Loss + Bandwidth + Cost + Preference + Hysteresis Tolerance)',
+    lcb_robust: 'Active: All parameters + adaptive bilateral jitter envelope max(Tolerance, 10%×Cost, 1.25×(JitA+JitB))',
+    sticky_sla: 'Active: SLA Gate & weights for failover; [Tolerance] disabled (locks primary route while within SLA)',
+    mos_itu: 'Active: All parameters using ITU-T G.107 177.3ms nonlinear voice/gaming impairment curve',
+    lowest_rtt: 'Active: Smoothed RTT, Loss, Bandwidth & Preference only; [Jitter Weight] & [Cost Weight] disabled'
+  };
+  if (hintEl) hintEl.textContent = hints[algo] || '';
+}
+
+document.getElementById('cfgAlgorithm').addEventListener('change', updateAlgorithmParameterState);
+
+function loadConfigForm(group) {
+  const c = group.config;
+  document.getElementById('cfgAlgorithm').value = c.algorithm || 'composite';
+  updateAlgorithmParameterState();
+  document.getElementById('cfgTolerance').value = c.tolerance;
+  document.getElementById('cfgHoldTime').value = c.hold_time_ms;
+  document.getElementById('cfgFailureThreshold').value = c.failure_threshold;
+  document.getElementById('cfgIntervalSec').value = Math.max(1, Math.round((c.interval_ms || group.interval_ms || 30000) / 1000));
+  document.getElementById('cfgStatWindow').value = c.stat_window || 6;
+  document.getElementById('cfgPenaltyHalfLifeSec').value = Math.max(5, Math.round((c.penalty_half_life_ms || 60000) / 1000));
+  document.getElementById('cfgBwWindowSec').value = Math.max(1, Math.round((c.bandwidth_window_ms || 1000) / 1000));
+  document.getElementById('cfgMaxLatency').value = c.max_latency;
+  document.getElementById('cfgMaxLoss').value = Math.round((c.max_loss || 0.20) * 100);
+  document.getElementById('cfgJitterWeight').value = c.jitter_weight;
+  document.getElementById('cfgLossWeight').value = Number(((c.loss_weight || 300) / 100).toFixed(2));
+  document.getElementById('cfgCostWeight').value = c.cost_weight;
+  document.getElementById('cfgBandwidthWeight').value = c.bandwidth_weight;
+
+  policyContainer.innerHTML = '';
+  (c.policies || []).forEach(p => addPolicyItemRow(p));
+}
+
+document.getElementById('addPolicyRowBtn').addEventListener('click', () => addPolicyItemRow());
+document.getElementById('presetPolicyBtn').addEventListener('click', () => {
+  policyContainer.innerHTML = '';
+  addPolicyItemRow({ match: '(?i)(iplc|iepl|专线)', tier: 1, preference: -25, max_bandwidth_mbps: 100, cost: 3.0 });
+  addPolicyItemRow({ match: '(?i)(cn2|9929|cmin2)', tier: 1, preference: -15, max_bandwidth_mbps: 300, cost: 1.2 });
+  addPolicyItemRow({ match: '(?i)(cmi|iij|softbank|软银)', tier: 2, preference: 0, max_bandwidth_mbps: 500, cost: 0.8 });
+  addPolicyItemRow({ match: '.*', tier: 3, preference: 10, max_bandwidth_mbps: 1000, cost: 0.2 });
+  showToast('已填入典型线路预设，点击“保存并立即生效”提交');
+});
+
+document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+  const g = getCurrentGroup();
+  if (!g) return;
+  const policies = Array.from(policyContainer.querySelectorAll('.policy-item')).map(row => ({
+    match: row.querySelector('.p-match').value.trim(),
+    tier: parseInt(row.querySelector('.p-tier').value, 10) || 1,
+    preference: parseInt(row.querySelector('.p-pref').value, 10) || 0,
+    max_bandwidth_mbps: parseInt(row.querySelector('.p-bw').value, 10) || 0,
+    cost: parseFloat(row.querySelector('.p-cost').value) || 1.0
+  }));
+
+  const maxLossPct = parseFloat(document.getElementById('cfgMaxLoss').value) || 20;
+  const lossWeightPerPct = parseFloat(document.getElementById('cfgLossWeight').value) || 3.0;
+  const intervalSec = Math.max(5, parseInt(document.getElementById('cfgIntervalSec').value, 10) || 30);
+  const statWindow = Math.max(1, Math.min(50, parseInt(document.getElementById('cfgStatWindow').value, 10) || 6));
+  const penaltyHlSec = Math.max(5, parseInt(document.getElementById('cfgPenaltyHalfLifeSec').value, 10) || 60);
+  const bwWindowSec = Math.max(1, Math.min(30, parseInt(document.getElementById('cfgBwWindowSec').value, 10) || 1));
+
+  const payload = {
+    algorithm: document.getElementById('cfgAlgorithm').value || 'composite',
+    interval_ms: intervalSec * 1000,
+    stat_window: statWindow,
+    penalty_half_life_ms: penaltyHlSec * 1000,
+    bandwidth_window_ms: bwWindowSec * 1000,
+    tolerance: parseInt(document.getElementById('cfgTolerance').value, 10) || 50,
+    hold_time_ms: parseInt(document.getElementById('cfgHoldTime').value, 10) || 30000,
+    failure_threshold: parseInt(document.getElementById('cfgFailureThreshold').value, 10) || 5,
+    max_latency: parseInt(document.getElementById('cfgMaxLatency').value, 10) || 500,
+    max_loss: maxLossPct > 1 ? (maxLossPct / 100.0) : maxLossPct,
+    jitter_weight: parseFloat(document.getElementById('cfgJitterWeight').value) || 1.0,
+    loss_weight: lossWeightPerPct * 100.0,
+    cost_weight: parseFloat(document.getElementById('cfgCostWeight').value) || 25.0,
+    bandwidth_weight: parseFloat(document.getElementById('cfgBandwidthWeight').value) || 40.0,
+    policies
+  };
+
+  try {
+    await apiFetch(`/smartroute/api/groups/${encodeURIComponent(g.tag)}/config`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    showToast(state.lang === 'zh' ? '已保存智能选路策略并实时生效' : 'SmartRoute policy saved & applied');
+    await fetchOverview();
+    switchView('proxies');
+  } catch (err) {
+    showToast('保存失败: ' + err.message);
+  }
+});
+
+applyI18n();
+fetchOverview();
+setInterval(fetchOverview, 2000);
+</script>
+</body>
+</html>

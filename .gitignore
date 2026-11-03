@@ -1,0 +1,11 @@
+/sing-box
+/sing-box-*
+/smartroute-bin
+*.exe
+*.tar.gz
+*.zip
+*.log
+*.db
+.DS_Store
+/dist/
+/build/
