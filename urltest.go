@@ -3,7 +3,6 @@ package smartroute
 import (
 	"context"
 	"io"
-	"maps"
 	"net"
 	"slices"
 	"sync"
@@ -578,23 +577,12 @@ func (b *urlTestBatch) test(outbounds []adapter.Outbound, link string, interval 
 			continue
 		}
 		switch nested := detour.(type) {
-		case *URLTest:
-			b.checked[tag] = true
-			b.groups = append(b.groups, nested)
-			b.batch.Go(tag, func() (any, error) {
-				nestedResult, _ := nested.group.urlTest(b.ctx, force)
-				b.access.Lock()
-				maps.Copy(b.result, nestedResult)
-				b.access.Unlock()
-				return nil, nil
-			})
 		case adapter.OutboundGroup:
 			b.checked[tag] = true
 			b.groups = append(b.groups, nested)
-			b.test(common.FilterNotNil(common.Map(nested.All(), func(it string) adapter.Outbound {
-				member, _ := b.outbound.Outbound(it)
-				return member
-			})), link, interval, force)
+			if selected := unwrapLeafOutbound(nested, N.NetworkTCP); selected != nil {
+				b.test([]adapter.Outbound{selected}, link, interval, force)
+			}
 		default:
 			history := b.metrics.LoadURLTestHistory(tag)
 			if !force && history != nil && time.Since(history.Time) < interval*4/5 {

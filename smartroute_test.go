@@ -3,6 +3,7 @@ package smartroute
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -481,4 +482,96 @@ func TestSmartRouteContextOptionsUnmarshal(t *testing.T) {
 	require.Equal(t, AlgorithmMOSITU, utOpts2.Algorithm)
 	require.Equal(t, uint16(350), utOpts2.MaxLatency)
 }
+
+type mockGroupOutbound struct {
+	*mockOutbound
+	members  []string
+	selected adapter.Outbound
+}
+
+func (g *mockGroupOutbound) Now() string {
+	if g.selected == nil {
+		return ""
+	}
+	return g.selected.Tag()
+}
+
+func (g *mockGroupOutbound) All() []string {
+	return g.members
+}
+
+func (g *mockGroupOutbound) Selected(network string) adapter.Outbound {
+	return g.selected
+}
+
+func (g *mockGroupOutbound) AttachConnection(closer io.Closer) func() {
+	return func() {}
+}
+
+func newHTTP200Outbound(tag string, counter *int32) *mockOutbound {
+	return newMockOutbound(tag, func(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+		if counter != nil {
+			*counter++
+		}
+		c1, c2 := net.Pipe()
+		go func() {
+			defer c2.Close()
+			buf := make([]byte, 512)
+			_, _ = c2.Read(buf)
+			_, _ = c2.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"))
+		}()
+		return c1, nil
+	})
+}
+
+func TestURLTestOutboundsOnlyProbesCurrentSelectedNodeForSelectAndURLTest(t *testing.T) {
+	t.Parallel()
+	ctx, metrics := newTestContext()
+
+	var select1Probes, select2Probes int32
+	selectNode1 := newHTTP200Outbound("select-node-1", &select1Probes)
+	selectNode2 := newHTTP200Outbound("select-node-2", &select2Probes)
+	selectorGroup := &mockGroupOutbound{
+		mockOutbound: &mockOutbound{
+			Adapter: outbound.NewAdapter(C.TypeSelector, "select-group", []string{N.NetworkTCP, N.NetworkUDP}, []string{"select-node-1", "select-node-2"}),
+		},
+		members:  []string{"select-node-1", "select-node-2"},
+		selected: selectNode1,
+	}
+
+	var ut1Probes, ut2Probes int32
+	utNode1 := newHTTP200Outbound("ut-node-1", &ut1Probes)
+	utNode2 := newHTTP200Outbound("ut-node-2", &ut2Probes)
+	nestedURLTestGroup, err := NewURLTestGroupWithSmartRoute(
+		ctx, nil, log.NewNOPFactory().Logger(),
+		[]adapter.Outbound{utNode1, utNode2},
+		DefaultURLTestURL, time.Minute, 10, 10*time.Minute, false, SmartRouteConfig{},
+	)
+	require.NoError(t, err)
+	nestedURLTestGroup.selectedOutboundTCP = utNode1
+	nestedURLTest := &URLTest{
+		Adapter: outbound.NewAdapter(C.TypeURLTest, "nested-urltest-group", []string{N.NetworkTCP, N.NetworkUDP}, []string{"ut-node-1", "ut-node-2"}),
+		tags:    []string{"ut-node-1", "ut-node-2"},
+		group:   nestedURLTestGroup,
+	}
+
+	_ = selectNode2
+	result := URLTestOutbounds(
+		ctx, nil, metrics, log.NewNOPFactory().Logger(),
+		[]adapter.Outbound{selectorGroup, nestedURLTest},
+		DefaultURLTestURL, time.Minute, true,
+	)
+
+	require.Equal(t, int32(1), select1Probes)
+	require.Equal(t, int32(0), select2Probes)
+	require.Equal(t, int32(1), ut1Probes)
+	require.Equal(t, int32(0), ut2Probes)
+	require.NotZero(t, result["select-node-1"])
+	require.NotZero(t, result["select-group"])
+	require.Zero(t, result["select-node-2"])
+	require.NotZero(t, result["ut-node-1"])
+	require.NotZero(t, result["nested-urltest-group"])
+	require.Zero(t, result["ut-node-2"])
+}
+
 
