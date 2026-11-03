@@ -7,13 +7,13 @@
 ## 界面预览 (`/smartroute`)
 
 ### 1. 线路总览与多维代价实时分析
-![SmartRoute 线路总览与代价分析](./dashboard.png)
+![SmartRoute 线路总览与代价分析](./docs/dashboard.png)
 
 ### 2. 五大选路算法、统计窗口与正则策略配置
-![SmartRoute 选路策略与权重配置](./policies.png)
+![SmartRoute 选路策略与权重配置](./docs/policies.png)
 
 ### 3. 切换合理性实时诊断与防震荡决策审计日志
-![SmartRoute 决策日志与配置评估](./logs.png)
+![SmartRoute 决策日志与配置评估](./docs/logs.png)
 
 ---
 
