@@ -1,9 +1,11 @@
 package smartroute
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"regexp"
+	"sort"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -1106,6 +1108,7 @@ type SmartRouteNodeStatus struct {
 	BandwidthPenalty           float64   `json:"bandwidth_penalty"`
 	CostPenalty                float64   `json:"cost_penalty"`
 	EffectiveScore             float64   `json:"effective_score"`
+	ScoreHistory               []float64 `json:"score_history,omitempty"`
 	ThroughputBps              uint64    `json:"throughput_bps"`
 	PeakThroughputBps          uint64    `json:"peak_throughput_bps"`
 	Utilization                float64   `json:"utilization"`
@@ -1170,6 +1173,15 @@ func (s *URLTest) SmartRouteStatus() SmartRouteGroupStatus {
 		activeTCPTag = activeTCP.Tag()
 	}
 
+	grp.scoreHistoryMu.Lock()
+	if time.Since(grp.lastHistoryAt) >= 2*time.Second {
+		grp.scoreHistoryMu.Unlock()
+		// Read-only status query only updates in-memory trajectory, never writes to cache.db
+		grp.recordGroupScoreSnapshotLocked(false, true)
+	} else {
+		grp.scoreHistoryMu.Unlock()
+	}
+
 	nodes := make([]SmartRouteNodeStatus, 0, len(grp.outbounds))
 	for _, detour := range grp.outbounds {
 		policy := grp.smartRoute.matchPolicy(detour.Tag())
@@ -1188,6 +1200,14 @@ func (s *URLTest) SmartRouteStatus() SmartRouteGroupStatus {
 		bwPenalty = eval.bwPenalty
 		utilization = eval.utilization
 		costPenalty := eval.costPenalty
+
+		var histCopy []float64
+		grp.scoreHistoryMu.Lock()
+		if h := grp.scoreHistory[detour.Tag()]; len(h) > 0 {
+			histCopy = make([]float64, len(h))
+			copy(histCopy, h)
+		}
+		grp.scoreHistoryMu.Unlock()
 
 		nodes = append(nodes, SmartRouteNodeStatus{
 			Tag:                        detour.Tag(),
@@ -1213,6 +1233,7 @@ func (s *URLTest) SmartRouteStatus() SmartRouteGroupStatus {
 			BandwidthPenalty:           bwPenalty,
 			CostPenalty:                costPenalty,
 			EffectiveScore:             eval.score,
+			ScoreHistory:               histCopy,
 			ThroughputBps:              snap.ThroughputBps,
 			PeakThroughputBps:          snap.PeakThroughputBps,
 			Utilization:                utilization,
@@ -1293,6 +1314,7 @@ func (s *URLTest) UpdateSmartRouteConfig(dto SmartRouteGroupConfigDTO) error {
 	if s.group != nil {
 		s.group.updateAccess.Lock()
 		s.group.smartRoute = newCfg
+		s.group.configModifiedByAPI = true
 		if dto.Tolerance > 0 {
 			s.group.tolerance = dto.Tolerance
 		}
@@ -1309,6 +1331,276 @@ func (s *URLTest) UpdateSmartRouteConfig(dto SmartRouteGroupConfigDTO) error {
 		}
 		s.group.recordConfigUpdateEvent(dto)
 		s.group.performUpdateCheck()
+		s.group.FlushHotCache()
 	}
 	return nil
+}
+
+const maxScoreHistoryPoints = 50
+
+// persistedGroupState is stored as a single compact key (__sr__:<groupTag>) in cache.db.
+// Ephemeral UI time-series (score_history) and cold/expired nodes (>24h) are omitted to prevent bbolt bloat.
+type persistedGroupState struct {
+	SelectedTCP string                       `json:"tcp,omitempty"`
+	SelectedUDP string                       `json:"udp,omitempty"`
+	SwitchTCP   int64                        `json:"st,omitempty"`
+	SwitchUDP   int64                        `json:"su,omitempty"`
+	HotNodes    map[string]hotNodeCacheEntry `json:"nodes,omitempty"`
+	Config      *SmartRouteGroupConfigDTO    `json:"cfg,omitempty"`
+	UpdatedAt   int64                        `json:"at"`
+}
+
+func (g *URLTestGroup) AttachCacheFile(groupTag string, cf adapter.CacheFile) {
+	if g == nil || cf == nil {
+		return
+	}
+	now := time.Now()
+	g.updateAccess.Lock()
+	g.groupTag = groupTag
+	g.cacheFile = cf
+
+	if groupTag != "" {
+		if raw := cf.LoadSelected(cacheKeyGroupPrefix + groupTag); raw != "" {
+			var state persistedGroupState
+			if err := json.Unmarshal([]byte(raw), &state); err == nil {
+				if state.Config != nil {
+					if restoredCfg, cfgErr := NewSmartRouteConfig(URLTestOptions{
+						Algorithm:        state.Config.Algorithm,
+						Tolerance:        state.Config.Tolerance,
+						Policies:         state.Config.Policies,
+						JitterWeight:     state.Config.JitterWeight,
+						LossWeight:       state.Config.LossWeight,
+						CostWeight:       state.Config.CostWeight,
+						BandwidthWeight:  state.Config.BandwidthWeight,
+						MaxLatency:       state.Config.MaxLatency,
+						MaxLoss:          state.Config.MaxLoss,
+						FailureThreshold: state.Config.FailureThreshold,
+						HoldTime:         badoption.Duration(time.Duration(state.Config.HoldTimeMs) * time.Millisecond),
+						StatWindow:       state.Config.StatWindow,
+						PenaltyHalfLife:  badoption.Duration(time.Duration(state.Config.PenaltyHalfLifeMs) * time.Millisecond),
+						BandwidthWindow:  badoption.Duration(time.Duration(state.Config.BandwidthWindowMs) * time.Millisecond),
+					}); cfgErr == nil {
+						g.smartRoute = restoredCfg
+						g.configModifiedByAPI = true
+						if state.Config.Tolerance > 0 {
+							g.tolerance = state.Config.Tolerance
+						}
+						if g.metrics != nil {
+							g.metrics.SetWindowConfig(MetricsWindowConfig{
+								StatWindow:      restoredCfg.StatWindow,
+								PenaltyHalfLife: restoredCfg.PenaltyHalfLife,
+								BandwidthWindow: restoredCfg.BandwidthWindow,
+							})
+						}
+					}
+				}
+				// Restore only active member nodes that exist in current group outbounds
+				if len(state.HotNodes) > 0 && g.metrics != nil {
+					for _, detour := range g.outbounds {
+						realTag := group.RealTag(detour, N.NetworkTCP)
+						if realTag == "" {
+							realTag = detour.Tag()
+						}
+						if entry, ok := state.HotNodes[realTag]; ok {
+							g.metrics.RestoreHotNodeEntry(realTag, entry, now)
+						} else if entry, ok := state.HotNodes[detour.Tag()]; ok {
+							g.metrics.RestoreHotNodeEntry(realTag, entry, now)
+						}
+					}
+				}
+				if state.SelectedTCP != "" {
+					for _, detour := range g.outbounds {
+						if detour.Tag() == state.SelectedTCP {
+							g.selectedOutboundTCP = detour
+							break
+						}
+					}
+				}
+				if state.SelectedUDP != "" {
+					for _, detour := range g.outbounds {
+						if detour.Tag() == state.SelectedUDP {
+							g.selectedOutboundUDP = detour
+							break
+						}
+					}
+				}
+				if state.SwitchTCP > 0 {
+					g.lastSwitchTCP = time.Unix(state.SwitchTCP, 0)
+				}
+				if state.SwitchUDP > 0 {
+					g.lastSwitchUDP = time.Unix(state.SwitchUDP, 0)
+				}
+			}
+		} else if sel := cf.LoadSelected(groupTag); sel != "" {
+			for _, detour := range g.outbounds {
+				if detour.Tag() == sel {
+					g.selectedOutboundTCP = detour
+					break
+				}
+			}
+		}
+	}
+	g.updateAccess.Unlock()
+	g.performUpdateCheck()
+}
+
+func (g *URLTestGroup) FlushHotCache() {
+	if g == nil {
+		return
+	}
+	g.updateAccess.Lock()
+	defer g.updateAccess.Unlock()
+	if !g.cacheDirty && !g.lastCacheFlushAt.IsZero() {
+		return
+	}
+	g.persistGroupStateLocked(time.Now())
+}
+
+func (g *URLTestGroup) recordGroupScoreSnapshotLocked(forceFlush bool, readOnly bool) {
+	if g == nil {
+		return
+	}
+	now := time.Now()
+
+	g.scoreHistoryMu.Lock()
+	if g.scoreHistory == nil {
+		g.scoreHistory = make(map[string][]float64, len(g.outbounds))
+	}
+	for _, detour := range g.outbounds {
+		eval := g.evaluateOutbound(detour, N.NetworkTCP)
+		if !eval.healthy {
+			continue
+		}
+		rounded := math.Round(eval.score*10) / 10
+		series := append(g.scoreHistory[detour.Tag()], rounded)
+		if len(series) > maxScoreHistoryPoints {
+			series = series[len(series)-maxScoreHistoryPoints:]
+		}
+		g.scoreHistory[detour.Tag()] = series
+		if g.metrics != nil {
+			realTag := group.RealTag(detour, N.NetworkTCP)
+			g.metrics.RecordEffectiveScore(realTag, rounded)
+		}
+	}
+	g.lastHistoryAt = now
+	g.scoreHistoryMu.Unlock()
+
+	if readOnly {
+		return
+	}
+	g.cacheDirty = true
+	if forceFlush || g.lastCacheFlushAt.IsZero() || now.Sub(g.lastCacheFlushAt) >= hotCacheFlushInterval {
+		g.persistGroupStateLocked(now)
+	}
+}
+
+func (g *URLTestGroup) persistGroupStateLocked(now time.Time) {
+	if g == nil || g.cacheFile == nil || g.groupTag == "" {
+		return
+	}
+	var selectedTCP, selectedUDP string
+	if g.selectedOutboundTCP != nil {
+		selectedTCP = g.selectedOutboundTCP.Tag()
+	}
+	if g.selectedOutboundUDP != nil {
+		selectedUDP = g.selectedOutboundUDP.Tag()
+	}
+	var switchTCPUnix, switchUDPUnix int64
+	if !g.lastSwitchTCP.IsZero() {
+		switchTCPUnix = g.lastSwitchTCP.Unix()
+	}
+	if !g.lastSwitchUDP.IsZero() {
+		switchUDPUnix = g.lastSwitchUDP.Unix()
+	}
+
+	type keyedEntry struct {
+		key   string
+		entry hotNodeCacheEntry
+	}
+	var candidates []keyedEntry
+	if g.metrics != nil {
+		seen := make(map[string]bool, len(g.outbounds))
+		for _, detour := range g.outbounds {
+			realTag := group.RealTag(detour, N.NetworkTCP)
+			if realTag == "" {
+				realTag = detour.Tag()
+			}
+			if realTag == "" || seen[realTag] {
+				continue
+			}
+			seen[realTag] = true
+			if entry, ok := g.metrics.ExportHotNodeEntry(realTag, now); ok {
+				candidates = append(candidates, keyedEntry{key: realTag, entry: entry})
+			}
+		}
+	}
+	// Cap hot nodes per group to prevent oversized payloads on huge subscriptions
+	if len(candidates) > maxHotNodesPerGroup {
+		sort.Slice(candidates, func(i, j int) bool {
+			if candidates[i].key == selectedTCP || candidates[i].key == selectedUDP {
+				return true
+			}
+			if candidates[j].key == selectedTCP || candidates[j].key == selectedUDP {
+				return false
+			}
+			if candidates[i].entry.Trip != candidates[j].entry.Trip {
+				return !candidates[i].entry.Trip
+			}
+			return candidates[i].entry.Score < candidates[j].entry.Score
+		})
+		candidates = candidates[:maxHotNodesPerGroup]
+	}
+	var hotNodes map[string]hotNodeCacheEntry
+	if len(candidates) > 0 {
+		hotNodes = make(map[string]hotNodeCacheEntry, len(candidates))
+		for _, c := range candidates {
+			hotNodes[c.key] = c.entry
+		}
+	}
+
+	var cfgDTO *SmartRouteGroupConfigDTO
+	if g.configModifiedByAPI {
+		rawPolicies := make([]URLTestPolicy, len(g.smartRoute.RawPolicies))
+		copy(rawPolicies, g.smartRoute.RawPolicies)
+		cfgDTO = &SmartRouteGroupConfigDTO{
+			Algorithm:         g.smartRoute.Algorithm,
+			IntervalMs:        g.interval.Milliseconds(),
+			Tolerance:         g.tolerance,
+			JitterWeight:      g.smartRoute.JitterWeight,
+			LossWeight:        g.smartRoute.LossWeight,
+			CostWeight:        g.smartRoute.CostWeight,
+			BandwidthWeight:   g.smartRoute.BandwidthWeight,
+			MaxLatency:        g.smartRoute.MaxLatency,
+			MaxLoss:           g.smartRoute.MaxLoss,
+			FailureThreshold:  g.smartRoute.FailureThreshold,
+			HoldTimeMs:        g.smartRoute.HoldTime.Milliseconds(),
+			StatWindow:        g.smartRoute.StatWindow,
+			PenaltyHalfLifeMs: g.smartRoute.PenaltyHalfLife.Milliseconds(),
+			BandwidthWindowMs: g.smartRoute.BandwidthWindow.Milliseconds(),
+			Policies:          rawPolicies,
+		}
+	}
+
+	if len(hotNodes) == 0 && !g.configModifiedByAPI && selectedTCP == "" {
+		return
+	}
+	state := persistedGroupState{
+		SelectedTCP: selectedTCP,
+		SelectedUDP: selectedUDP,
+		SwitchTCP:   switchTCPUnix,
+		SwitchUDP:   switchUDPUnix,
+		HotNodes:    hotNodes,
+		Config:      cfgDTO,
+		UpdatedAt:   now.Unix(),
+	}
+	if data, err := json.Marshal(state); err == nil {
+		_ = g.cacheFile.StoreSelected(cacheKeyGroupPrefix+g.groupTag, string(data))
+	}
+	if selectedTCP != "" {
+		_ = g.cacheFile.StoreSelected(g.groupTag, selectedTCP)
+	}
+	if len(hotNodes) > 0 || g.configModifiedByAPI {
+		g.lastCacheFlushAt = now
+		g.cacheDirty = false
+	}
 }

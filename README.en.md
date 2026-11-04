@@ -149,13 +149,19 @@ Both `"type": "urltest"` and `"type": "smartroute"` are supported:
 - **`"mos_itu"`**: ITU-T G.107 E-Model MOS quality scoring with a `177.3ms` knee-point nonlinear impairment curve for VoIP/gaming.
 - **`"lowest_rtt"`**: Pure smoothed RTT + preference priority (`jitter_weight` and `cost_weight` are ignored).
 
-### 1-RTT Probe & Active Probe Verification Before Circuit Break (`failure_threshold`)
+### 1-RTT Probe, Active Probe Tolerance & Circuit-Breaker Verification (`failure_threshold`)
 - **Default 1-RTT Probe URL (`http://1.1.1.1/cdn-cgi/trace`)**: Uses a pure Anycast IP over plaintext HTTP `HEAD`—eliminating upstream DNS resolution overhead and target TLS handshake overhead while ensuring true end-to-end 1-RTT verification across lazy-handshake (`NeedHandshakeForWrite`) and multiplexed/QUIC proxies.
+- **Active Probe Fast Retry & Graceful Degradation**:
+  - When an active probe fails on a currently online node (`Available = true`), `smartroute` immediately performs 1 fast retry (`3s` timeout) to filter out transient packet loss.
+  - A single failed active probe cycle on an established node (`sample_count > 0`) does **not** immediately mark the node offline; instead, it keeps the node available while accumulating EWMA `loss_rate` and `+50` probe penalty cost to smoothly deprioritize it. Only `>= 2` consecutive failed probe cycles mark the node offline.
 - **Preventing False Circuit Breaks Caused by Dead Target Sites**: When consecutive passive dial failures on a node reach `failure_threshold`:
   1. **Zero-Wait Backup Retry**: The current connection request immediately retries via the best healthy alternate outbound (`selectAlternateOutbound`) without blocking user traffic.
   2. **Single-Flight Active Probe Adjudication**: Concurrently, `smartroute` triggers a single-flight active probe (`urltest.URLTest`) against the node:
      - **Probe Succeeds**: Proves the proxy node itself is healthy and the dial failures were caused by an unreachable target site. `smartroute` refunds the accumulated passive penalty, resets `ConsecutivePassiveFailures = 0`, updates smoothed RTT, and keeps the primary route unchanged (`probe_verified_healthy`).
      - **Probe Fails**: Confirms the proxy node is down, trips the circuit breaker (`CircuitOpen = true`), applies the circuit-trip penalty, and switches the primary route (`passive_circuit_trip`).
+- **Hot Data Persistence via `cache.db` (Zero-Bloat Design)**:
+  - Automatically reuses `experimental.cache_file` (or mounts a default `cache.db`) to persist each group's selected primary route, runtime policy overrides, and active nodes' hot composite cost metrics (`smoothed_rtt`, `jitter`, `loss_rate`, half-life decayed `penalty`, and `effective_score`) across restarts.
+  - **Anti-Bloat**: Uses a single overwritten key per group (`__sr__:<groupTag>`, eliminating orphaned node keys on subscription updates), excludes ephemeral UI time-series (`score_history`), enforces a 24h hot-node TTL and 64-node cap (~45 bytes/node, fitting within a single 4KB bbolt page), performs zero disk writes on read-only API polling, and coalesces routine probe flushes to at most once per 60s (plus immediate flush on route switch, config update, or service shutdown).
 
 ---
 

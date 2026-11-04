@@ -802,6 +802,22 @@
     display: inline-block;
     margin-right: 4px;
   }
+  .legend-dot-subsidy {
+    width: 12px;
+    height: 9px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-right: 4px;
+    border: 1px dashed #67c23a;
+    background: repeating-linear-gradient(
+      -45deg,
+      rgba(103, 194, 58, 0.35),
+      rgba(103, 194, 58, 0.35) 2px,
+      rgba(103, 194, 58, 0.08) 2px,
+      rgba(103, 194, 58, 0.08) 4px
+    );
+    vertical-align: middle;
+  }
   .breakdown-list {
     display: flex;
     flex-direction: column;
@@ -821,9 +837,34 @@
     border-radius: 6px;
     overflow: hidden;
     display: flex;
+    align-items: center;
+    position: relative;
   }
   .breakdown-seg {
     height: 100%;
+    transition: width 0.3s ease;
+  }
+  .breakdown-seg-subsidy {
+    height: 100%;
+    box-sizing: border-box;
+    border: 1px dashed #67c23a;
+    border-left: 2px solid #67c23a;
+    border-radius: 0 4px 4px 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      rgba(103, 194, 58, 0.28),
+      rgba(103, 194, 58, 0.28) 3px,
+      rgba(103, 194, 58, 0.06) 3px,
+      rgba(103, 194, 58, 0.06) 6px
+    );
+    color: #67c23a;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 14px;
+    text-align: center;
+    overflow: hidden;
+    white-space: nowrap;
     transition: width 0.3s ease;
   }
 
@@ -1125,9 +1166,9 @@
             <div class="legend-row">
               <span><i class="legend-dot" style="background:#3b82f6"></i><span data-i18n="leg_rtt">平滑延迟</span></span>
               <span><i class="legend-dot" style="background:#e6a23c"></i><span data-i18n="leg_sla">抖动/丢包/惩罚</span></span>
-              <span><i class="legend-dot" style="background:#51a8dd"></i><span data-i18n="leg_bw">带宽代价</span></span>
+              <span><i class="legend-dot" style="background:#a78bfa"></i><span data-i18n="leg_bw">带宽代价</span></span>
               <span><i class="legend-dot" style="background:#f596aa"></i><span data-i18n="leg_cost">成本代价</span></span>
-              <span><i class="legend-dot" style="background:#67c23a"></i><span data-i18n="leg_pref">线路偏好补贴</span></span>
+              <span><i class="legend-dot-subsidy"></i><span data-i18n="leg_pref">偏好抵扣 (-)</span></span>
             </div>
           </div>
           <div class="breakdown-list" id="scoreBreakdownList"></div>
@@ -1380,7 +1421,7 @@ const I18N = {
     leg_sla: '抖动/丢包/惩罚',
     leg_bw: '带宽代价',
     leg_cost: '成本代价',
-    leg_pref: '线路偏好补贴',
+    leg_pref: '偏好抵扣 (-)',
     cfg_sec_algo: '选路决策核心算法',
     cfg_sec_algo_desc: '针对不同网络环境选择最匹配的智能选路模型（如通用加权、100~1000ms 剧烈波动抗抖动、SLA 死锁粘滞或语音 MOS 模型）',
     lbl_algorithm: '选路算法',
@@ -1457,7 +1498,7 @@ const I18N = {
     leg_sla: 'Jitter/Loss/Penalty',
     leg_bw: 'Bandwidth Cost',
     leg_cost: 'Traffic Cost',
-    leg_pref: 'Route Preference',
+    leg_pref: 'Subsidy Offset (-)',
     cfg_sec_algo: 'SmartRoute Algorithm',
     cfg_sec_algo_desc: 'Select the optimal routing algorithm for your network characteristics (Composite, UCB Robust, Sticky SLA, ITU MOS, or Lowest RTT)',
     lbl_algorithm: 'Algorithm',
@@ -1513,9 +1554,9 @@ const TIPS = {
   zh: {
     tip_chart_breakdown: {
       title: '选路综合代价构成说明',
-      desc: '展示每个节点的总代价由哪几部分叠加而成（总代价越低越优先）。',
-      formula: '总代价 = 平滑延迟 + 抖动代价 + 丢包代价 + 震荡惩罚 + 带宽拥塞代价 + 成本代价 + 线路偏好补贴',
-      tune: '若绿色段越长代表该线路享有越高负向代价补贴；橙色/蓝色段过长说明线路存在抖动丢包或带宽拥塞。'
+      desc: '实心色块总长严格对应节点最终综合代价（实心条越短代表代价越低、越优先）；右侧绿色虚线斜纹框代表由“线路偏好补贴”从原始代价中抵扣减免的部分。',
+      formula: '最终综合代价(实心总长) = 原始代价(平滑延迟 + 抖动/丢包/惩罚 + 带宽代价 + 成本代价) - 偏好补贴抵扣',
+      tune: '实心条结束位置即右侧显示的最终代价数值；绿色虚线框越长说明该线路享受的负向代价减免越多。'
     },
     tip_chart_trend: {
       title: '线路综合代价实时轨迹说明',
@@ -1683,9 +1724,9 @@ const TIPS = {
   en: {
     tip_chart_breakdown: {
       title: 'Path Cost Breakdown',
-      desc: 'Shows how each dimension contributes to the node composite routing cost (lower total cost wins).',
-      formula: 'Total Cost = Smoothed RTT + Jitter Cost + Loss Cost + Flap Penalty + Bandwidth Cost + Traffic Cost + Preference',
-      tune: 'Green bar indicates negative preference bonus; large orange/blue segments indicate SLA degradation or congestion.'
+      desc: 'Solid bar length strictly matches the final effective routing cost (shorter solid bar wins). The dashed green hatched segment shows how much gross cost was deducted by negative route preference.',
+      formula: 'Effective Cost (Solid Bar) = Gross Cost (RTT + SLA + BW + Traffic Cost) - Preference Subsidy Offset',
+      tune: 'Solid bar end aligns with the numeric score on the right; dashed green segment indicates subtracted subsidy.'
     },
     tip_chart_trend: {
       title: 'Composite Cost Trajectory',
@@ -2032,7 +2073,7 @@ async function apiFetch(path, options = {}) {
 }
 
 function latencyColor(ms, healthy) {
-  if (!healthy || !ms || ms <= 0) return '#909399';
+  if (!healthy || ms === null || ms === undefined || Number.isNaN(ms)) return '#909399';
   if (ms < 100) return '#67c23a';
   if (ms < 220) return '#e6a23c';
   return '#f56c6c';
@@ -2111,9 +2152,14 @@ function recordTimeSeries(group) {
   }
   const s = state.historySeries[group.tag];
   for (const n of group.nodes) {
-    if (!s.nodes[n.tag]) s.nodes[n.tag] = [];
-    s.nodes[n.tag].push(n.healthy ? Number(n.effective_score.toFixed(1)) : null);
-    if (s.nodes[n.tag].length > 50) s.nodes[n.tag].shift();
+    if (!s.nodes[n.tag] || (Array.isArray(n.score_history) && n.score_history.length > s.nodes[n.tag].length)) {
+      s.nodes[n.tag] = Array.isArray(n.score_history) ? [...n.score_history] : [];
+    } else {
+      s.nodes[n.tag].push(n.healthy ? Number(n.effective_score.toFixed(1)) : null);
+    }
+    if (s.nodes[n.tag].length > 50) {
+      s.nodes[n.tag] = s.nodes[n.tag].slice(-50);
+    }
   }
 }
 
@@ -2345,39 +2391,69 @@ function renderDiagnosticsAndLogs(group) {
 }
 
 function renderBreakdown(sortedNodes) {
-  const maxScore = Math.max(150, ...sortedNodes.filter(n => n.healthy).map(n => n.effective_score * 1.15));
+  const isZh = state.lang === 'zh';
+  const healthyNodes = sortedNodes.filter(n => n.healthy);
+  const calcGross = (n) => {
+    const base = Math.max(0, n.smoothed_rtt);
+    const slaExtra = Math.max(0, n.sla_rtt - base);
+    const bwPen = Math.max(0, n.bandwidth_penalty);
+    const costPen = Math.max(0, n.cost_penalty) + Math.max(0, n.preference);
+    return base + slaExtra + bwPen + costPen;
+  };
+  const maxScore = Math.max(
+    150,
+    ...healthyNodes.map(n => Math.max(n.effective_score, calcGross(n)) * 1.12)
+  );
+  const bestScore = healthyNodes.length ? Math.min(...healthyNodes.map(n => n.effective_score)) : 0;
+
   document.getElementById('scoreBreakdownList').innerHTML = sortedNodes.map(n => {
     if (!n.healthy) {
       return `<div class="breakdown-item">
         <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0.6">[T${n.tier}] ${n.tag}</div>
         <div class="breakdown-bar"><div class="breakdown-seg" style="width:100%;background:rgba(245,108,108,0.2)"></div></div>
-        <div style="font-family:var(--font-mono);font-size:12px;text-align:right;color:#f56c6c">${n.circuit_open ? '熔断' : '离线'}</div>
+        <div style="font-family:var(--font-mono);font-size:12px;text-align:right;color:#f56c6c">${n.circuit_open ? (isZh ? '熔断' : 'TRIP') : (isZh ? '离线' : 'DOWN')}</div>
       </div>`;
     }
     const base = Math.max(0, n.smoothed_rtt);
     const slaExtra = Math.max(0, n.sla_rtt - base);
     const bwPen = Math.max(0, n.bandwidth_penalty);
-    const costPen = Math.max(0, n.cost_penalty);
-    const prefBonus = n.preference < 0 ? Math.abs(n.preference) : 0;
+    const costPen = Math.max(0, n.cost_penalty) + Math.max(0, n.preference);
+    const grossScore = base + slaExtra + bwPen + costPen;
+    const prefSubsidy = n.preference < 0 ? Math.abs(n.preference) : 0;
+    const netScore = Math.max(0, n.effective_score);
 
-    const wBase = Math.min(100, (base / maxScore) * 100);
-    const wSla = Math.min(100 - wBase, (slaExtra / maxScore) * 100);
-    const wBw = Math.min(100 - wBase - wSla, (bwPen / maxScore) * 100);
-    const wCost = Math.min(100 - wBase - wSla - wBw, (costPen / maxScore) * 100);
-    const wPref = Math.min(25, (prefBonus / maxScore) * 100);
+    // Solid bar total width strictly matches final effective_score (netScore)
+    const wNet = Math.min(100, (netScore / maxScore) * 100);
+    const posSum = grossScore > 0 ? grossScore : 1;
+    const wBase = (base / posSum) * wNet;
+    const wSla = (slaExtra / posSum) * wNet;
+    const wBw = (bwPen / posSum) * wNet;
+    const wCost = (costPen / posSum) * wNet;
+
+    // Dashed green segment represents the cost deducted by negative preference subsidy
+    const deducted = Math.max(0, grossScore - netScore);
+    const wSubsidy = prefSubsidy > 0 ? Math.min(100 - wNet, (deducted / maxScore) * 100) : 0;
+
+    const tipText = isZh
+      ? `最终综合代价: ${n.effective_score.toFixed(1)} = 原始代价 ${grossScore.toFixed(1)} [平滑RTT: ${base.toFixed(1)}ms | 抖动/丢包/惩罚: +${slaExtra.toFixed(1)} | 带宽代价: +${bwPen.toFixed(1)} | 成本代价: +${costPen.toFixed(1)}] ${n.preference < 0 ? `- 偏好抵扣 ${prefSubsidy}` : ''}`
+      : `Effective Cost: ${n.effective_score.toFixed(1)} = Gross ${grossScore.toFixed(1)} [RTT: ${base.toFixed(1)}ms | SLA: +${slaExtra.toFixed(1)} | BW: +${bwPen.toFixed(1)} | Cost: +${costPen.toFixed(1)}] ${n.preference < 0 ? `- Subsidy ${prefSubsidy}` : ''}`;
+
+    const scoreColor = !n.within_sla || n.congested
+      ? '#f56c6c'
+      : (n.effective_score <= bestScore + 15 || n.effective_score < 120 ? '#67c23a' : (n.effective_score < 260 ? '#e6a23c' : 'var(--color-text-highlight)'));
 
     return `<div class="breakdown-item">
-      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${n.active_tcp ? '700' : '400'};color:${n.active_tcp ? 'var(--color-focus-blue)' : 'inherit'}" title="${n.tag}">
-        [T${n.tier}] ${n.tag}
+      <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:${n.active_tcp ? '700' : '400'};color:${n.active_tcp ? 'var(--color-focus-blue)' : 'inherit'}" title="${n.tag}${n.active_tcp ? (isZh ? ' (当前承载主路)' : ' (Active Route)') : ''}">
+        ${n.active_tcp ? '● ' : ''}[T${n.tier}] ${n.tag}
       </div>
-      <div class="breakdown-bar" title="平滑RTT: ${base.toFixed(1)}ms | 抖动/丢包/惩罚代价: +${slaExtra.toFixed(1)} | 带宽代价: +${bwPen.toFixed(1)} | 成本代价: ${n.cost_penalty.toFixed(1)} | 偏好补贴: ${n.preference}">
-        <div class="breakdown-seg" style="width:${wBase}%;background:#3b82f6"></div>
-        <div class="breakdown-seg" style="width:${wSla}%;background:#e6a23c"></div>
-        <div class="breakdown-seg" style="width:${wBw}%;background:#51a8dd"></div>
-        <div class="breakdown-seg" style="width:${wCost}%;background:#f596aa"></div>
-        ${wPref > 0 ? `<div class="breakdown-seg" style="width:${wPref}%;background:#67c23a"></div>` : ''}
+      <div class="breakdown-bar" title="${tipText}">
+        <div class="breakdown-seg" style="width:${wBase.toFixed(2)}%;background:#3b82f6"></div>
+        <div class="breakdown-seg" style="width:${wSla.toFixed(2)}%;background:#e6a23c"></div>
+        <div class="breakdown-seg" style="width:${wBw.toFixed(2)}%;background:#a78bfa"></div>
+        <div class="breakdown-seg" style="width:${wCost.toFixed(2)}%;background:#f596aa"></div>
+        ${wSubsidy > 0.3 ? `<div class="breakdown-seg-subsidy" style="width:${wSubsidy.toFixed(2)}%">${wSubsidy >= 8 ? '-' + Math.round(prefSubsidy) : ''}</div>` : ''}
       </div>
-      <div style="font-family:var(--font-mono);font-size:12px;text-align:right;font-weight:600;color:${latencyColor(n.effective_score, true)}">
+      <div style="font-family:var(--font-mono);font-size:12px;text-align:right;font-weight:600;color:${scoreColor}" title="${tipText}">
         ${n.effective_score.toFixed(1)}
       </div>
     </div>`;
@@ -2394,19 +2470,31 @@ function renderTrendCanvas(group, sortedNodes) {
   if (!seriesObj) return;
 
   const topNodes = sortedNodes.slice(0, 6);
-  document.getElementById('trendLegend').innerHTML = topNodes.map((n, i) =>
-    `<span><i class="legend-dot" style="background:${CHART_COLORS[i % CHART_COLORS.length]}"></i>${n.tag}</span>`
+  const colorForNode = (tag) => {
+    const fixedIdx = group.nodes.findIndex(gn => gn.tag === tag);
+    return CHART_COLORS[(fixedIdx >= 0 ? fixedIdx : 0) % CHART_COLORS.length];
+  };
+
+  document.getElementById('trendLegend').innerHTML = topNodes.map(n =>
+    `<span><i class="legend-dot" style="background:${colorForNode(n.tag)}"></i>${n.active_tcp ? '<b>' + n.tag + '</b>' : n.tag}</span>`
   ).join('');
 
-  let maxVal = 120;
+  let rawMax = 100;
+  let rawMin = 0;
   for (const n of topNodes) {
     const arr = seriesObj.nodes[n.tag] || [];
     for (const v of arr) {
-      if (v !== null && v > maxVal) maxVal = v * 1.15;
+      if (v !== null) {
+        if (v > rawMax) rawMax = v;
+        if (v < rawMin) rawMin = v;
+      }
     }
   }
+  const maxVal = Math.max(120, rawMax * 1.15);
+  const minVal = rawMin < 0 ? Math.floor(rawMin * 1.1) : 0;
+  const valSpan = Math.max(1, maxVal - minVal);
 
-  const padL = 42, padR = 14, padT = 14, padB = 22;
+  const padL = 42, padR = 44, padT = 14, padB = 22;
   const plotW = w - padL - padR, plotH = h - padT - padB;
 
   const style = getComputedStyle(document.documentElement);
@@ -2421,24 +2509,47 @@ function renderTrendCanvas(group, sortedNodes) {
     ctx.moveTo(padL, y);
     ctx.lineTo(w - padR, y);
     ctx.stroke();
-    ctx.fillText(String(Math.round(maxVal * (1 - i / 4))), 6, y + 4);
+    const tickVal = Math.round(maxVal - (valSpan * i) / 4);
+    ctx.fillText(String(tickVal), 6, y + 4);
   }
 
-  topNodes.forEach((n, idx) => {
+  topNodes.forEach(n => {
     const pts = seriesObj.nodes[n.tag] || [];
     if (!pts.length) return;
-    ctx.strokeStyle = CHART_COLORS[idx % CHART_COLORS.length];
+    const color = colorForNode(n.tag);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
     ctx.lineWidth = n.active_tcp ? 2.6 : 1.6;
     ctx.beginPath();
     let started = false;
+    let lastX = 0, lastY = 0, lastVal = null;
+    const denom = Math.max(1, pts.length - 1);
     pts.forEach((val, i) => {
       if (val === null) { started = false; return; }
-      const x = padL + (pts.length === 1 ? plotW : (i / Math.max(10, pts.length - 1)) * plotW);
-      const y = padT + plotH - Math.min(1, val / maxVal) * plotH;
-      if (!started) { ctx.moveTo(x, y); started = true; }
-      else ctx.lineTo(x, y);
+      const x = padL + (pts.length === 1 ? plotW : (i / denom) * plotW);
+      const y = padT + plotH - Math.max(0, Math.min(1, (val - minVal) / valSpan)) * plotH;
+      if (!started) {
+        ctx.moveTo(x, y);
+        if (pts.length === 1) {
+          ctx.lineTo(padL, y);
+        }
+        started = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
+      lastX = x;
+      lastY = y;
+      lastVal = val;
     });
     ctx.stroke();
+
+    if (lastVal !== null) {
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, n.active_tcp ? 3.5 : 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = (n.active_tcp ? 'bold ' : '') + '10px monospace';
+      ctx.fillText(lastVal.toFixed(0), lastX + 5, lastY + 3);
+    }
   });
 }
 

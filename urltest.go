@@ -14,7 +14,9 @@ import (
 	"github.com/sagernet/sing-box/common/interrupt"
 	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/group"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/batch"
@@ -83,6 +85,23 @@ func NewURLTest(ctx context.Context, router adapter.Router, logger log.ContextLo
 	return outbound, nil
 }
 
+func ensureCacheFile(ctx context.Context, logger log.Logger, scope *adapter.Scope) adapter.CacheFile {
+	if cf := service.FromContext[adapter.CacheFile](ctx); cf != nil {
+		return cf
+	}
+	defaultCF := cachefile.New(ctx, logger, option.CacheFileOptions{
+		Enabled: true,
+		Path:    "cache.db",
+	})
+	if err := defaultCF.Start(adapter.StartStateInitialize, scope); err != nil {
+		return nil
+	}
+	if service.FromContext[service.Registry](ctx) != nil {
+		service.MustRegister[adapter.CacheFile](ctx, defaultCF)
+	}
+	return defaultCF
+}
+
 func (s *URLTest) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	switch stage {
 	case adapter.StartStateStart:
@@ -94,10 +113,12 @@ func (s *URLTest) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			}
 			outbounds = append(outbounds, detour)
 		}
+		cf := ensureCacheFile(s.ctx, s.logger, scope)
 		group, err := NewURLTestGroupWithSmartRoute(s.ctx, s.outbound, s.logger, outbounds, s.link, s.interval, s.tolerance, s.idleTimeout, s.interruptExternalConnections, s.smartRoute)
 		if err != nil {
 			return err
 		}
+		group.AttachCacheFile(s.Tag(), cf)
 		s.group = group
 	case adapter.StartStateStarted:
 		s.group.PostStart()
@@ -356,6 +377,14 @@ type URLTestGroup struct {
 	lastSuppressedKey            string
 	lastSuppressedAt             time.Time
 	lastOverflowTag              string
+	groupTag                     string
+	cacheFile                    adapter.CacheFile
+	scoreHistoryMu               sync.Mutex
+	scoreHistory                 map[string][]float64
+	lastHistoryAt                time.Time
+	lastCacheFlushAt             time.Time
+	cacheDirty                   bool
+	configModifiedByAPI          bool
 	ticker                       *time.Ticker
 	close                        chan struct{}
 	started                      bool
@@ -455,6 +484,7 @@ func (g *URLTestGroup) SetInterval(interval time.Duration) {
 }
 
 func (g *URLTestGroup) Close() error {
+	g.FlushHotCache()
 	g.access.Lock()
 	defer g.access.Unlock()
 	if g.ticker == nil {
@@ -607,6 +637,20 @@ func (b *urlTestBatch) test(outbounds []adapter.Outbound, link string, interval 
 					if b.ctx.Err() != nil {
 						return nil, nil
 					}
+					if snap, ok := b.metrics.LoadLinkMetrics(tag); ok && snap.Available {
+						retryCtx, retryCancel := context.WithTimeout(b.ctx, 3*time.Second)
+						retryDelay, retryErr := urltest.URLTest(retryCtx, link, detour)
+						retryCancel()
+						if retryErr == nil {
+							testResult.delay = retryDelay
+							testResult.err = nil
+						}
+					}
+				}
+				if testResult.err != nil {
+					if b.ctx.Err() != nil {
+						return nil, nil
+					}
 					b.logger.Debug("outbound ", tag, " unavailable: ", testResult.err)
 					b.metrics.RecordProbeFailure(tag)
 				} else {
@@ -659,6 +703,8 @@ func (g *URLTestGroup) performUpdateCheck() {
 	if selected {
 		g.metrics.NotifyUpdated()
 	}
+	// Only flush immediately to cache.db when selected route changes or flush interval (60s) has elapsed
+	g.recordGroupScoreSnapshotLocked(selected, false)
 }
 
 func (g *URLTestGroup) verifyOutboundBeforeCircuitBreak(detour adapter.Outbound, network string, failoverTag string, triggerErr error) <-chan struct{} {

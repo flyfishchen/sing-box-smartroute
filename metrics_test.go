@@ -80,3 +80,36 @@ func TestLinkMetricsThroughputEstimation(t *testing.T) {
 	smoothed := storage.RecordProbeSuccess("node-bw", 120)
 	require.Equal(t, uint16(120), smoothed)
 }
+
+func TestLinkMetricsActiveProbeFailureTolerance(t *testing.T) {
+	t.Parallel()
+	storage := smartroute.NewMetricsStorage(urltest.NewHistoryStorage())
+
+	// Uninitialized node fails probe -> immediately unavailable
+	storage.RecordProbeFailure("node-cold")
+	coldSnap, ok := storage.LoadLinkMetrics("node-cold")
+	require.True(t, ok)
+	require.False(t, coldSnap.Available)
+
+	// Established node succeeds first
+	storage.RecordProbeSuccess("node-warm", 50)
+	snap1, _ := storage.LoadLinkMetrics("node-warm")
+	require.True(t, snap1.Available)
+
+	// 1st probe failure on warm node -> stays available with degraded loss/penalty, not immediately offline
+	storage.RecordProbeFailure("node-warm")
+	snap2, _ := storage.LoadLinkMetrics("node-warm")
+	require.True(t, snap2.Available)
+	require.Equal(t, uint32(1), snap2.ConsecutiveProbeFailures)
+	require.Greater(t, snap2.LossRate, 0.0)
+	require.InDelta(t, 50.0, snap2.Penalty, 0.5)
+	require.NotNil(t, storage.LoadURLTestHistory("node-warm"))
+
+	// 2nd consecutive probe failure -> marked unavailable (offline)
+	storage.RecordProbeFailure("node-warm")
+	snap3, _ := storage.LoadLinkMetrics("node-warm")
+	require.False(t, snap3.Available)
+	require.Equal(t, uint32(2), snap3.ConsecutiveProbeFailures)
+	require.Nil(t, storage.LoadURLTestHistory("node-warm"))
+}
+

@@ -260,6 +260,17 @@ func probeSmartRouteNode(outboundManager adapter.OutboundManager, metrics *Metri
 		defer cancel()
 		delay, err := urltest.URLTest(ctx, DefaultURLTestURL, proxy)
 		realTag := group.RealTag(proxy, N.NetworkTCP)
+		if err != nil && r.Context().Err() == nil {
+			if snap, ok := metrics.LoadLinkMetrics(realTag); ok && snap.Available {
+				retryCtx, retryCancel := context.WithTimeout(r.Context(), 3*time.Second)
+				retryDelay, retryErr := urltest.URLTest(retryCtx, DefaultURLTestURL, proxy)
+				retryCancel()
+				if retryErr == nil {
+					delay = retryDelay
+					err = nil
+				}
+			}
+		}
 		if err != nil {
 			metrics.RecordProbeFailure(realTag)
 		} else {

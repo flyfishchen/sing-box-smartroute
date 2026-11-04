@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
@@ -573,5 +575,110 @@ func TestURLTestOutboundsOnlyProbesCurrentSelectedNodeForSelectAndURLTest(t *tes
 	require.NotZero(t, result["nested-urltest-group"])
 	require.Zero(t, result["ut-node-2"])
 }
+
+func TestSmartRouteCacheDBPersistence(t *testing.T) {
+	t.Parallel()
+	dbPath := filepath.Join(t.TempDir(), "cache.db")
+	nopLogger := log.NewNOPFactory().Logger()
+
+	// Phase 1: Initial run records probe metrics, preference subsidy, composite cost & score history into cache.db
+	ctx1, metrics1 := newTestContext()
+	scope1 := adapter.NewScope(ctx1, nopLogger)
+	cf1 := cachefile.New(ctx1, nopLogger, option.CacheFileOptions{
+		Enabled: true,
+		Path:    dbPath,
+	})
+	require.NoError(t, cf1.Start(adapter.StartStateInitialize, scope1))
+
+	nodeA := newMockOutbound("us-vps", nil)
+	nodeB := newMockOutbound("us-cn2gia", nil)
+
+	cfg1, err := NewSmartRouteConfig(URLTestOptions{
+		Tolerance: 20,
+		Policies: []URLTestPolicy{
+			{Match: "us-vps", Tier: 1, Preference: -200, Cost: 1.0},
+			{Match: ".*", Tier: 1, Preference: 0, Cost: 1.0},
+		},
+	})
+	require.NoError(t, err)
+
+	grp1, err := NewURLTestGroupWithSmartRoute(
+		ctx1, nil, nopLogger,
+		[]adapter.Outbound{nodeA, nodeB},
+		"", time.Minute, 20, 10*time.Minute, false, cfg1,
+	)
+	require.NoError(t, err)
+	grp1.AttachCacheFile("auto-group", cf1)
+
+	metrics1.RecordProbeSuccess("us-vps", 470)
+	metrics1.RecordProbeSuccess("us-cn2gia", 386)
+	grp1.performUpdateCheck()
+
+	ut1 := &URLTest{
+		Adapter:    outbound.NewAdapter(C.TypeURLTest, "auto-group", []string{N.NetworkTCP, N.NetworkUDP}, []string{"us-vps", "us-cn2gia"}),
+		ctx:        ctx1,
+		logger:     nopLogger,
+		tags:       []string{"us-vps", "us-cn2gia"},
+		interval:   time.Minute,
+		tolerance:  20,
+		smartRoute: cfg1,
+		group:      grp1,
+	}
+	status1 := ut1.SmartRouteStatus()
+	require.Equal(t, "us-vps", status1.SelectedTCP)
+	require.NoError(t, scope1.Close())
+
+	// Phase 2: Simulated restart with a brand-new context, empty memory, and default config, restoring from cache.db
+	ctx2, _ := newTestContext()
+	scope2 := adapter.NewScope(ctx2, nopLogger)
+	cf2 := cachefile.New(ctx2, nopLogger, option.CacheFileOptions{
+		Enabled: true,
+		Path:    dbPath,
+	})
+	require.NoError(t, cf2.Start(adapter.StartStateInitialize, scope2))
+	defer scope2.Close()
+
+	grp2, err := NewURLTestGroupWithSmartRoute(
+		ctx2, nil, nopLogger,
+		[]adapter.Outbound{nodeA, nodeB},
+		"", time.Minute, 20, 10*time.Minute, false, cfg1,
+	)
+	require.NoError(t, err)
+	grp2.AttachCacheFile("auto-group", cf2)
+
+	ut2 := &URLTest{
+		Adapter:    outbound.NewAdapter(C.TypeURLTest, "auto-group", []string{N.NetworkTCP, N.NetworkUDP}, []string{"us-vps", "us-cn2gia"}),
+		ctx:        ctx2,
+		logger:     nopLogger,
+		tags:       []string{"us-vps", "us-cn2gia"},
+		interval:   time.Minute,
+		tolerance:  20,
+		smartRoute: cfg1,
+		group:      grp2,
+	}
+	status2 := ut2.SmartRouteStatus()
+	require.Equal(t, "us-vps", status2.SelectedTCP)
+	require.Len(t, status2.Nodes, 2)
+
+	var vpsNode, giaNode SmartRouteNodeStatus
+	for _, n := range status2.Nodes {
+		if n.Tag == "us-vps" {
+			vpsNode = n
+		} else if n.Tag == "us-cn2gia" {
+			giaNode = n
+		}
+	}
+	require.True(t, vpsNode.Healthy)
+	require.InDelta(t, 470.0, vpsNode.SmoothedRTT, 0.5)
+	require.InDelta(t, 270.0, vpsNode.EffectiveScore, 0.5)
+	require.NotEmpty(t, vpsNode.ScoreHistory)
+	require.InDelta(t, 270.0, vpsNode.ScoreHistory[len(vpsNode.ScoreHistory)-1], 0.5)
+
+	require.True(t, giaNode.Healthy)
+	require.InDelta(t, 386.0, giaNode.SmoothedRTT, 0.5)
+	require.InDelta(t, 386.0, giaNode.EffectiveScore, 0.5)
+	require.NotEmpty(t, giaNode.ScoreHistory)
+}
+
 
 

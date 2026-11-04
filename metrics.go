@@ -16,18 +16,34 @@ import (
 )
 
 const (
-	ewmaAlphaRTT            = 0.30
-	ewmaBetaJitter          = 0.25
-	ewmaGammaLoss           = 0.20
-	penaltyPerProbeFailure  = 50.0
-	penaltyPerCircuitTrip   = 100.0
-	DefaultStatWindow       = uint8(6)
-	DefaultPenaltyHalfLife  = 60 * time.Second
-	DefaultBandwidthWindow  = 1 * time.Second
-	DefaultFailureThreshold = 5
-	maxBandwidthWindowSec   = 30
-	bwSlotMask              = 31
+	ewmaAlphaRTT                 = 0.30
+	ewmaBetaJitter               = 0.25
+	ewmaGammaLoss                = 0.20
+	penaltyPerProbeFailure       = 50.0
+	penaltyPerCircuitTrip        = 100.0
+	DefaultStatWindow            = uint8(6)
+	DefaultPenaltyHalfLife       = 60 * time.Second
+	DefaultBandwidthWindow       = 1 * time.Second
+	DefaultFailureThreshold      = 5
+	DefaultProbeFailureThreshold = uint32(2)
+	maxBandwidthWindowSec        = 30
+	bwSlotMask                   = 31
+	cacheKeyGroupPrefix          = "__sr__:"
+	hotCacheTTL                  = 24 * time.Hour
+	hotCacheFlushInterval        = 60 * time.Second
+	maxHotNodesPerGroup          = 64
 )
+
+// hotNodeCacheEntry is a compact representation (~45 bytes) of a node's hot routing cost state.
+type hotNodeCacheEntry struct {
+	RTT   float64 `json:"r"`           // SmoothedRTT (0.1ms precision)
+	Jit   float64 `json:"j,omitempty"` // Jitter (0.1ms precision)
+	Loss  float64 `json:"l,omitempty"` // LossRate (0.001 precision)
+	Pen   float64 `json:"p,omitempty"` // Penalty (0.1 precision)
+	Score float64 `json:"s"`           // EffectiveScore (0.1 precision)
+	Trip  bool    `json:"c,omitempty"` // CircuitOpen
+	At    int64   `json:"t"`           // LastUpdatedUnix
+}
 
 type MetricsWindowConfig struct {
 	StatWindow      uint8
@@ -51,6 +67,7 @@ type LinkMetricsSnapshot struct {
 	Penalty                    float64
 	ConsecutiveProbeFailures   uint32
 	ConsecutivePassiveFailures uint32
+	EffectiveScore             float64
 	ThroughputBps              uint64
 	PeakThroughputBps          uint64
 	TotalBytes                 uint64
@@ -68,6 +85,7 @@ type LinkMetrics struct {
 	jitter                     float64
 	lossRate                   float64
 	penalty                    float64
+	effectiveScore             float64
 	penaltyUpdatedAt           time.Time
 	consecutiveProbeFailures   uint32
 	consecutivePassiveFailures uint32
@@ -192,7 +210,7 @@ func (m *LinkMetrics) RecordProbeSuccess(delay uint16, now time.Time) uint16 {
 	return smoothed
 }
 
-func (m *LinkMetrics) RecordProbeFailure(now time.Time) {
+func (m *LinkMetrics) RecordProbeFailure(now time.Time) bool {
 	if now.IsZero() {
 		now = time.Now()
 	}
@@ -208,8 +226,11 @@ func (m *LinkMetrics) RecordProbeFailure(now time.Time) {
 	}
 	m.penalty += penaltyPerProbeFailure
 	m.consecutiveProbeFailures++
-	m.available = false
+	if m.sampleCount == 0 || m.circuitOpen || m.consecutiveProbeFailures >= DefaultProbeFailureThreshold {
+		m.available = false
+	}
 	m.lastUpdated = now
+	return !m.available
 }
 
 func (m *LinkMetrics) RecordPassiveSuccess(dialRTT time.Duration, now time.Time) {
@@ -378,6 +399,7 @@ func (m *LinkMetrics) Snapshot(now time.Time) LinkMetricsSnapshot {
 		Penalty:                    m.penalty,
 		ConsecutiveProbeFailures:   m.consecutiveProbeFailures,
 		ConsecutivePassiveFailures: m.consecutivePassiveFailures,
+		EffectiveScore:             m.effectiveScore,
 		ThroughputBps:              m.CurrentThroughputBps(now),
 		PeakThroughputBps:          m.peakThroughputBps.Load(),
 		TotalBytes:                 uint64(m.totalBytes.Load()),
@@ -386,6 +408,61 @@ func (m *LinkMetrics) Snapshot(now time.Time) LinkMetricsSnapshot {
 	}
 	m.access.Unlock()
 	return snap
+}
+
+func (m *LinkMetrics) exportHotEntry(now time.Time) (hotNodeCacheEntry, bool) {
+	if now.IsZero() {
+		now = time.Now()
+	}
+	m.access.Lock()
+	defer m.access.Unlock()
+	if m.sampleCount == 0 || m.smoothedRTT <= 0 || m.lastUpdated.IsZero() {
+		return hotNodeCacheEntry{}, false
+	}
+	if now.Sub(m.lastUpdated) > hotCacheTTL {
+		return hotNodeCacheEntry{}, false
+	}
+	m.decayPenaltyLocked(now)
+	return hotNodeCacheEntry{
+		RTT:   math.Round(m.smoothedRTT*10) / 10,
+		Jit:   math.Round(m.jitter*10) / 10,
+		Loss:  math.Round(m.lossRate*1000) / 1000,
+		Pen:   math.Round(m.penalty*10) / 10,
+		Score: math.Round(m.effectiveScore*10) / 10,
+		Trip:  m.circuitOpen,
+		At:    m.lastUpdated.Unix(),
+	}, true
+}
+
+func (m *LinkMetrics) restoreHotEntry(e hotNodeCacheEntry, now time.Time) bool {
+	if now.IsZero() {
+		now = time.Now()
+	}
+	if e.RTT <= 0 || e.At <= 0 {
+		return false
+	}
+	updatedAt := time.Unix(e.At, 0)
+	if now.Sub(updatedAt) > hotCacheTTL {
+		return false
+	}
+	m.access.Lock()
+	defer m.access.Unlock()
+	if m.sampleCount > 0 {
+		return false
+	}
+	m.available = !e.Trip
+	m.circuitOpen = e.Trip
+	m.sampleCount = 1
+	m.lastDelay = uint16(math.Round(e.RTT))
+	m.smoothedRTT = e.RTT
+	m.jitter = e.Jit
+	m.lossRate = e.Loss
+	m.penalty = e.Pen
+	m.effectiveScore = e.Score
+	m.lastUpdated = updatedAt
+	m.penaltyUpdatedAt = updatedAt
+	m.decayPenaltyLocked(now)
+	return true
 }
 
 func (m *LinkMetrics) ResetPenaltyAndCircuit(now time.Time) {
@@ -453,6 +530,48 @@ func MetricsFromContext(ctx context.Context) *MetricsStorage {
 		service.MustRegisterPtr(ctx, m)
 	}
 	return m
+}
+
+func (s *MetricsStorage) ExportHotNodeEntry(tag string, now time.Time) (hotNodeCacheEntry, bool) {
+	if s == nil || tag == "" {
+		return hotNodeCacheEntry{}, false
+	}
+	s.access.RLock()
+	m, ok := s.linkMetrics[tag]
+	s.access.RUnlock()
+	if !ok || m == nil {
+		return hotNodeCacheEntry{}, false
+	}
+	return m.exportHotEntry(now)
+}
+
+func (s *MetricsStorage) RestoreHotNodeEntry(tag string, entry hotNodeCacheEntry, now time.Time) {
+	if s == nil || tag == "" {
+		return
+	}
+	s.access.Lock()
+	m := s.getOrCreateMetricsLocked(tag)
+	restored := m.restoreHotEntry(entry, now)
+	s.access.Unlock()
+	if restored && !entry.Trip && entry.RTT > 0 && s.upstream != nil {
+		s.upstream.StoreURLTestHistory(tag, &adapter.URLTestHistory{
+			Time:  time.Unix(entry.At, 0),
+			Delay: uint16(math.Round(entry.RTT)),
+		})
+	}
+}
+
+func (s *MetricsStorage) RecordEffectiveScore(tag string, score float64) {
+	if s == nil || tag == "" {
+		return
+	}
+	metrics := s.getOrCreateMetrics(tag)
+	if metrics == nil {
+		return
+	}
+	metrics.access.Lock()
+	metrics.effectiveScore = score
+	metrics.access.Unlock()
 }
 
 func (s *MetricsStorage) SetWindowConfig(cfg MetricsWindowConfig) {
@@ -590,9 +709,9 @@ func (s *MetricsStorage) RecordProbeFailure(tag string) {
 	now := time.Now()
 	s.access.Lock()
 	metrics := s.getOrCreateMetricsLocked(tag)
-	metrics.RecordProbeFailure(now)
+	markedDown := metrics.RecordProbeFailure(now)
 	s.access.Unlock()
-	if s.upstream != nil {
+	if markedDown && s.upstream != nil {
 		s.upstream.DeleteURLTestHistory(tag)
 	}
 }
